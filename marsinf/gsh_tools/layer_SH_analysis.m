@@ -171,6 +171,7 @@ for Hi = 1:max_bin
     % Do the analysis
     cs = GSHA(double(m),nmax); sc = cs2sc(cs);
     %figure;plot(1:size(sc,1),log10(sqrt(sum(sc.^2,2))./(1:size(sc,1))'));
+
     [Clm,Slm,llvec,mmvec] = sc2vecml(sc,nmax);
     
     %%%%%%%%%%%%%%%%%%

@@ -33,6 +33,7 @@ function [V] = model_SH_analysis(Model)
 %G = 6.67384e-11;      % Universal gravity constant
 %G = 6.6732e-11;
 %G = 6.67428e-11;
+
 Model.Re = double(Model.Re);
 Model.GM = double(Model.GM);
 G = double(6.673e-11);
@@ -48,7 +49,6 @@ max_bin = double(3);
 for nlayer = 1:Model.number_of_layers
     
     layer_name = ['l' num2str(nlayer)];
-    disp(['The layer number ' layer_name ' is starting'])
     
     % Costruct the coefficients for that particular layer
     [U,L,R] = import_layer(Model,nlayer);
@@ -88,5 +88,4 @@ for nlayer = 1:Model.number_of_layers
     V(:,3:4) = V(:,3:4) + Vlayer(:,3:4);
     
 end
-    
 

@@ -32,7 +32,14 @@ function [p, dp, ddp] = Legendre_functions(l,m,th)
 %   - code based on visu2plm_ww from Nico Sneeuw and Wouter van der Wal
 %   (23/11/2020) by Bart Root
 %-----------------------------------------------------------------------------
-
+L = max(l);
+filename = strjoin({'/home/2263373r/mars/legendres/legendre_',num2str(L),'_',num2str(m),'.mat'}, '');
+if exist(filename, 'file')
+    'reading file'
+    load(filename);
+    size(p)
+    return
+end
 
 % Input check for validatity of the program
 if min(size(l)) ~= 1;  error('Degree l must be vector (or scalar)'); end
@@ -138,3 +145,5 @@ if max(size(th))==1 && min(size(lvec))==1  && (lcol == 1)
     dp = dp';
     ddp = ddp';
 end
+
+return
