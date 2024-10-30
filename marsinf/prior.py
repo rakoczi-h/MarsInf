@@ -114,7 +114,6 @@ class Prior():
                 The mean of the js divergence values.
         """
         samples = self.sample(size=2000)
-        print(np.shape(samples))
         js = []
         for i, dim in enumerate(samples.T):
             xmin = min([np.min(dim), np.min(samples_to_compare[:num_samples,i])])
