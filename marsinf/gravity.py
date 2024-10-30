@@ -30,8 +30,12 @@ class GravityMap():
         octave.addpath('/home/2263373r/mars/marsinf/gsh_tools/')
         latLim = [np.min(np.min(self.lat)), np.max(np.max(self.lat)), self.resolution[0]]
         lonLim = [np.min(np.min(self.long)), np.max(np.max(self.long)), self.resolution[1]]
-        SHbounds = [2.0, self.resolution[0]-1] # truncating at 2nd degree for normalisation
+        SHbounds = [2.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
         data = octave.model_SH_synthesis(lonLim,latLim,self.height,SHbounds,self.coeffs,input_model,nout=1)
+        data.vec.X = np.flip(data.vec.X)
+        data.ten.Tzz = np.flip(data.ten.Tzz)
+        data.vec.Y = np.flip(data.vec.Y)
+        data.vec.Z = np.flip(data.vec.Z)
         self.g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
         self.grad = {'zz': data.ten.Tzz}
         octave.exit()
@@ -65,8 +69,8 @@ class GravityMap():
         fig, axes = plt.subplots(2,2, subplot_kw={'projection': proj})
         axes = axes.flatten()
         for i, ax in enumerate(axes):
-            to_plot = np.reshape(plot_arrays[i], self.shape)
-            im = ax.pcolormesh(self.long*np.pi/180.0, self.lat*np.pi/180.0, to_plot, cmap='coolwarm')
+            to_plot = plot_arrays[i]
+            im = ax.pcolormesh(self.long*np.pi/180.0, self.lat*np.pi/180.0, to_plot, cmap='rainbow')
             ax.set_title(titles[i])
             axpos = ax.get_position()
             pos_x = axpos.x0 # + 0.25*axpos.width
