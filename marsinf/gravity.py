@@ -27,7 +27,8 @@ class GravityMap():
         input_model = {'GM': 6.6743*1e-11*mass,
                         'Re': radius}
         octave = Oct2Py()
-        octave.addpath('/home/2263373r/mars/marsinf/gsh_tools/')
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        octave.addpath(os.path.join(dir_path, 'gsh_tools/'))
         latLim = [np.min(np.min(self.lat)), np.max(np.max(self.lat)), self.resolution[0]]
         lonLim = [np.min(np.min(self.long)), np.max(np.max(self.long)), self.resolution[1]]
         SHbounds = [2.0, self.shape[0]-1] # truncating at 2nd degree for normalisation

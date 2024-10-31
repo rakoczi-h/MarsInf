@@ -1,4 +1,5 @@
 from oct2py import Oct2Py
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -107,7 +108,8 @@ class Planet():
                                 'GM': 6.6743*1e-11*self.mass,
                                 'Re': self.radius}
         octave = Oct2Py()
-        octave.addpath('/home/2263373r/mars/marsinf/gsh_tools/')
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        octave.addpath(os.path.join(dir_path, 'gsh_tools/'))
         topography = np.reshape(topography, self.shape)
         moho = octave.topo2crust(topography, self.shape[0]-1, 'Thin_Shell', moho_parameters, nout=1)
         moho = - moho
@@ -138,7 +140,8 @@ class Planet():
                                 'dens': np.reshape(self.mantle.dens_model, self.shape)},
                         'l3': {'bound': np.zeros(self.shape)}}
         octave = Oct2Py()
-        octave.addpath('/home/2263373r/mars/marsinf/gsh_tools/')
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        octave.addpath(os.path.join(dir_path, 'gsh_tools/'))
         V = octave.model_SH_analysis(input_model, nout=1)
         if return_SH:
             gravity = GravityMap(lat=self.lat, long=self.long, height=height, shape=self.shape, resolution=self.resolution, coeffs=V)

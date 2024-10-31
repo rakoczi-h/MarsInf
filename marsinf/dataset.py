@@ -2,6 +2,7 @@ import numpy as np
 from datetime import datetime
 from oct2py import Oct2Py
 import resource
+import os
 
 from .utils import make_long_lat, great_circle_distance, matern_covariance, multivariate
 from .planet import Planet
@@ -215,7 +216,8 @@ class PlanetDataSet():
     def forward_model(self, return_SH=False, slim_output=True):
         start = datetime.now()
         octave = Oct2Py()
-        octave.addpath('/home/2263373r/mars/marsinf/gsh_tools/')
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        octave.addpath(os.path.join(dir_path, 'gsh_tools/'))
         height = self.survey_framework['height']
         gravitymaps = []
         for i, p in enumerate(self.planets):
