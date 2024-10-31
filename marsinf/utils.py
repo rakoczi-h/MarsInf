@@ -33,7 +33,7 @@ def great_circle_distance(long, lat, timed=False):
         print(f"Time taken by great circle distance calculation: {datetime.now()-start}")
     return central_angle
 
-def multivariate(cov, mean, size=None, seed=None, cholesky=True, timed=False):
+def multivariate(cov, mean, size=1, seed=None, cholesky=True, timed=False):
     """
     Parameters
     ----------
@@ -43,7 +43,7 @@ def multivariate(cov, mean, size=None, seed=None, cholesky=True, timed=False):
     np.random.seed(seed=seed)
     start = datetime.now()
     if cholesky:
-        x = np.random.normal(loc=0.0, scale=1.0, size=np.shape(cov)[0])
+        x = np.random.normal(loc=0.0, scale=1.0, size=(size, np.shape(cov)[0]))
         chol_cov = scipy.linalg.cholesky(cov, lower=False)
         #check = chol_cov @ chol_cov.T.conj()
         samples = np.dot(x, chol_cov)+mean
@@ -70,4 +70,15 @@ def matern_covariance(psi, epsilon, kappa, var, timed=False):
         print(f"Time taken by matern_covariance: {datetime.now()-start}")
     return matern
 
+
+def sections_mean(input_arr, shape):
+    split1 = np.array_split(input_arr, shape[0], axis=0)
+    output = np.ones(shape)
+    for i, ii in enumerate(split1):
+        ii = np.mean(ii, axis=0)
+        split2 = np.array_split(ii, shape[1])
+        for j, jj in enumerate(split2):
+            jj = np.mean(jj)
+            output[i,j] = jj
+    return output
 
