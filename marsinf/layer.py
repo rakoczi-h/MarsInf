@@ -38,7 +38,7 @@ class Layer():
                     super().__setattr__(key, value[key])
         super().__setattr__(name,value)
 
-    def matern_covariance(self):
+    def matern_covariance(self, verbose=False):
         """
         Makes a matern covariance matrix with the desired parameters. The output is the same size as psi.
         """
@@ -46,18 +46,16 @@ class Layer():
             if self.coordinates is None:
                 raise ValueError('Need to give either psi or coordinates attributes to the class')
             else:
-                print('making psi')
                 self.psi = great_circle_distance(lat=self.coordinates[:,0]/180.0*np.pi, long=self.coordinates[:,1]/180.0*np.pi)
         if None in [self.epsilon, self.kappa, self.var]:
             raise ValueError('Set the epsilon, kappa, and var attributes of the class')
-        self.matern = matern_covariance(self.psi, self.epsilon, self.kappa, self.var)
+        self.matern = matern_covariance(self.psi, self.epsilon, self.kappa, self.var, timed=verbose)
         return self.matern
 
-    def make_dens_model(self, seed=None):
+    def make_dens_model(self, seed=None, verbose=False):
         if self.matern is None:
             self.matern_covariance()
-
-        self.dens_model = multivariate(self.matern, self.av_dens*np.ones(np.shape(self.matern)[0]), seed=seed)
+        self.dens_model = multivariate(self.matern, self.av_dens*np.ones(np.shape(self.matern)[0]), seed=seed, timed=verbose)
         return self.dens_model
 
     # Plotting tools
