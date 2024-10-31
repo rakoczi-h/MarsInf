@@ -70,9 +70,7 @@ si = 2*si/sum(si);
 %% loop over the order of the Spherical Harmonics
 for m = double(0:L)
   % construct the legendre polynomials
-  tic
   p  = Legendre_functions(m:L,m,theta);
-  toc
   % Select particular colum of the signal
   ai = a(:,m+1);
   bi = b(:,m+1);
