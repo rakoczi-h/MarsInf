@@ -63,6 +63,7 @@ class PlanetDataSet():
         Long, Lat = make_long_lat(self.survey_framework['resolution'], self.survey_framework['ranges'])
         # Calculating the array of great circle distances
         psi = great_circle_distance(long=Long.flatten()/180.0*np.pi, lat=Lat.flatten()/180.0*np.pi)
+        print(np.shape(psi))
 
         # Simulating topography if not given
         if self.topography is None:
@@ -123,95 +124,6 @@ class PlanetDataSet():
         else:
             return planets, gravitymaps
 
-
-    def make_dataset_from_matern(self, matern_crust, matern_mantle):
-        if not isinstance(matern_crust, dict):
-            raise ValueError('matern_crust has to be a dictionary')
-        if not isinstance(matern_mantle, dict):
-            raise ValueError('matern_mantle has to be a dictionary')
-
-        start_dataset = datetime.now()
-
-        dataset_size = np.shape(matern_crust[list(matern_crust.keys())[0]])[0]
-        if np.shape(matern_mantle[list(matern_mantle.keys())[0]])[0] != dataset_size:
-            raise ValueError('The size of the two inputs does not agree.')
-        if self.size > dataset_size:
-            print(f"Requested size is too large. Setting self.size to {dataset_size} based on input to the function.")
-            self.size = dataset_size
-
-        # Randomising the order of the two dictionaries
-        idx1 = np.arange(dataset_size)
-        idx2 = np.arange(dataset_size)
-        np.random.shuffle(idx1)
-        np.random.shuffle(idx2)
-
-        for key in matern_crust.keys():
-            matern_crust[key] = matern_crust[key][idx1]
-        for key in matern_mantle.keys():
-            matern_mantle[key] = matern_mantle[key][idx2]
-
-        # Making the parameter dictionary
-        parameters_dict ={**matern_crust, **matern_mantle}
-        del parameters_dict['matern']
-
-        if self.parameter_labels != list(parameters_dict.keys()):
-            raise ValueError("The prior and the parameter keys do not match")
-
-        # Making the latitude longitude meshgrid
-        Long, Lat = make_long_lat(self.survey_framework['resolution'], self.survey_framework['ranges'])
-        # Calculating the array of great circle distances
-        psi = great_circle_distance(long=Long.flatten()/180.0*np.pi, lat=Lat.flatten()/180.0*np.pi)
-
-        # Simulating topography if not given
-        if self.topography is None:
-            print("Making topography...")
-            cm_t = matern_covariance(psi, 10, 0.6, 1000)
-            self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=5)
-
-        # Simulating the MOHO from self.topography
-        moho_planet = Planet(lat=Lat, long=Long, shape=np.shape(Lat), resolution=self.survey_framework['resolution'])
-        moho_parameters = self.model_framework['moho_parameters'] | {'rho_m': self.model_framework['av_dens_m'], 'rho_c': self.model_framework['av_dens_c'], 'GM': self.model_framework['mass']*6.6743*1e-11, 'Re': self.model_framework['radius']}
-        moho = moho_planet.make_moho(moho_parameters, topography=self.topography)
-
-        start_planets = datetime.now()
-        # Maing planets
-        planets = []
-        for s in range(self.size):
-            # picking the specific instance of planet parameters
-            planet_parameters = dict.fromkeys(self.priors.keys)
-            for key in list(self.parameter_labels):
-                planet_parameters[key] = parameters_dict[key][s]
-            crust = Layer(parameters={'av_dens': self.model_framework['av_dens_c'], 'kappa': planet_parameters['k_c'], 'epsilon': planet_parameters['e_c'], 'var': planet_parameters['v_c']}, lat=Lat, long=Long, psi=psi)
-            crust.matern = matern_crust['matern'][s,:]
-            crust.make_dens_model(seed=None)
-            crust.topo_model = self.topography
-
-            mantle = Layer(parameters={'av_dens': self.model_framework['av_dens_m'], 'kappa': planet_parameters['k_m'], 'epsilon': planet_parameters['e_m'], 'var': planet_parameters['v_m']}, lat=Lat, long=Long, psi=psi)
-            mantle.matern = matern_mantle['matern'][s,:]
-            mantle.make_dens_model(seed=None)
-            mantle.topo_model = moho
-            planet = Planet(parameters=planet_parameters, lat=Lat, long=Long, shape=np.shape(Lat), resolution=self.survey_framework['resolution'], psi=psi, crust=crust, mantle=mantle, mass=self.model_framework['mass'], radius=self.model_framework['radius'])
-            planets.append(planet)
-            if s % 100 == 0:
-                print(f"{s}/{self.size} planets made. \t Time taken: {datetime.now()-start_planets}")
-        self.planets = planets
-
-        start_gravity_maps = datetime.now()
-        if self.model_framework['type'] == 'sh':
-            gravitymaps = self.forward_model(return_SH=True)
-        if self.model_framework['type'] == 'map':
-            gravitymaps = self.forward_model(return_SH=False)
-        print(f"Dataset made. Time elapsed: {datetime.now()-start_dataset}")
-
-
-        # Cleaning up the planets
-        for s in range(self.size):
-            self.planets[s].crust = None
-            self.planets[s].mantle = None
-            self.planets[s].psi = None
-            self.planets[s].lat = None
-            self.planets[s].long = None
-        return planets, gravitymaps
 
     def forward_model(self, return_SH=False, slim_output=True):
         start = datetime.now()
