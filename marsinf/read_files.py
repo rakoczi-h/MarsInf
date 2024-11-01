@@ -1,9 +1,26 @@
 import pickle as pkl
 import numpy as np
 import os
-import numpy as np
 
-def read_files(data_location, filenames, datasize, model_parameters_to_include=['e_c', 'k_c', 'v_c'], noise=None):
+def read_files(data_location, filenames, model_parameters_to_include=['e_c', 'k_c', 'v_c'], noise=None):
+    """
+    Function that read the files defined by data_location and filenames. This is specific for data files describing planets, which contain a dictionary with the parameters and the gravity of planets. Note that SH degrees below 2 will automatically be ignored.
+    Parameters
+    ----------
+        data_location: str
+            The folder where the data files are located.
+        filenames: list
+            Each element is a str describing the name of the file to be read.
+        model_parameters_to_include: list
+            The input files are searched for these keys and the parameters with these names are included in the data. (Default: ['e_c', 'k_c', 'v_c'])
+        noise: np.ndarray
+            Array containing the standard deviation of the noise that is added to the sh coefficients from the files. It is assoumed that the first two columns are the degrees and the order of each coefficient, the 3rd column is the mn and the 4th is the Cmn coefficients. Has to have same units as the data. If None, no noise is added. (Default: None)
+    Output
+        train_data: list
+            Has one element, which is an ndarray with shape [dataset size, length of model_parameters_to_include].
+        train_conditional: list
+            Has one element, which is an ndarray with shape [dataset size, number of sh coefficients]
+    """
     train_data, train_conditional = ([],[])
     if isinstance(filenames, str):
         filenames = [filenames]
