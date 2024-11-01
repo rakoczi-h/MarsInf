@@ -63,7 +63,6 @@ class PlanetDataSet():
         Long, Lat = make_long_lat(self.survey_framework['resolution'], self.survey_framework['ranges'])
         # Calculating the array of great circle distances
         psi = great_circle_distance(long=Long.flatten()/180.0*np.pi, lat=Lat.flatten()/180.0*np.pi)
-        print(np.shape(psi))
 
         # Simulating topography if not given
         if self.topography is None:
@@ -72,7 +71,7 @@ class PlanetDataSet():
             self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=5)
 
         # Simulating the MOHO from self.topography
-        moho_planet = Planet(lat=Lat, long=Long, shape=np.shape(Lat), resolution=self.survey_framework['resolution'])
+        moho_planet = Planet(lat=Lat, long=Long, resolution=self.survey_framework['resolution'])
         moho_parameters = self.model_framework['moho_parameters'] | {'rho_m': self.model_framework['av_dens_m'], 'rho_c': self.model_framework['av_dens_c'], 'GM': self.model_framework['mass']*6.6743*1e-11, 'Re': self.model_framework['radius']}
         moho = moho_planet.make_moho(moho_parameters, topography=self.topography)
 
@@ -103,7 +102,7 @@ class PlanetDataSet():
                 crust.matern = None
                 mantle.matern = None
 
-                planet = Planet(parameters=planet_parameters, lat=Lat, long=Long, shape=np.shape(Lat), resolution=self.survey_framework['resolution'], psi=psi, crust=crust, mantle=mantle, mass=self.model_framework['mass'], radius=self.model_framework['radius'])
+                planet = Planet(parameters=planet_parameters, lat=Lat, long=Long, resolution=self.survey_framework['resolution'], psi=psi, crust=crust, mantle=mantle, mass=self.model_framework['mass'], radius=self.model_framework['radius'])
                 planets.append(planet)
                 if (i+1)*(j+1) % 100 == 0:
                     print(f"{i*j}/{self.size} planets made. \t Time taken: {datetime.now()-start_planets}")
