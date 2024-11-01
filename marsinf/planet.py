@@ -164,6 +164,10 @@ class Planet():
                 A 1D array continaing the values of the surface topography. The size should be N, where N=no. of points in latitude x no.of points in longitude. Units: m. (Default: None)
                 If None, taking it from the class.
             verbose: bool
+        Output
+        ------
+            moho: np.ndarray
+                A 1D array containing the values of the mantle-crust boundary topography. Units: m. The size is N, where N=no, of points in latitude x no. of points in longitude.
         """
         start = datetime.now()
         if self.shape is None:
@@ -206,6 +210,11 @@ class Planet():
             seed: int
                 If given, this seed number is used for the multivaraite sampling. (Default: None)
             verbose: bool
+        Output:
+        ------
+            topo: np.nd.array
+                A 1D array continaing the values of the surface topography. The size is N, where N=no. of points in latitude x no.of points in longitude. Units: m. (Default: None)
+
         """
         matern = matern_covariance(self.psi, parameters['epsilon'], parameters['kappa'], parameters['var'], timed=verbose)
 
@@ -217,10 +226,16 @@ class Planet():
         """
         Function that computes either the SH coefficients or the map of global gravity from the planet model.
         Parameters:
+        ----------
             height: float or int
                 The height above the surface at which the gravity map is to be obtained. Not necessary when return_SH is True. Units: m (Default: None)
             return_SH: bool
                 If True, only the SH coefficients are returned, if False, then the gravity maps are constructed also. (Default: False)
+        Output:
+        ------
+            gravity: GravityMap
+                Object containing information about the gravitational field. If return_SH is True, then only the SH coefficients are included in the class, no spatial gravity map.
+                If return_SH is False, then the class also contains graviational acceleration and gradient information.
         """
         input_model = {'number_of_layers': 2,
                         'GM': 6.6743*1e-11*self.mass,
@@ -267,6 +282,8 @@ class Planet():
     def plot_layers(self, filename='layers.png'):
         """
         Plots the topography on the surface, the MOHO, and the density distributions of the crust and mantle.
+        filename: str
+            The name under which the file is saved.
         """
         plot_arrays = [self.crust.topo_model, self.crust.dens_model, self.mantle.topo_model, self.mantle.dens_model]
         titles = ['Topography', 'Crust', 'Moho', 'Mantle']
