@@ -1,7 +1,6 @@
 import numpy as np
 from datetime import datetime
 from oct2py import Oct2Py
-import resource
 import os
 
 from .utils import make_long_lat, great_circle_distance, matern_covariance, multivariate
@@ -11,6 +10,33 @@ from .prior import Prior
 from .gravity import GravityMap
 
 class PlanetDataSet():
+    """
+    Parameters:
+    ----------
+        size: int
+            The number of planets included in the data set.
+        priors: Prior
+            The object describing the prior probability distribution of the parameters defining the planets in the dataset.
+        survey_framework: dict
+            The dictionary containing some essential information about the gravity maps that correspond to the planets.
+            If an empty dictionary is passed to the class, then the following default values are set:
+                "ranges": [[-180.0,180.0],[-90.0, 90.0]], The ranges covered by the gravity map in [longitude, latitude]. Assumed to be in degrees.
+                "resolution": [2,2], The resolution of the latitude and longitude grids in degrees.
+                "height": 0.0, The height above the aeroid in m, at which the gravity measurement were taken.
+        model_framework: dict
+            The dictionary containing some essential information about the planet models that are contained within this dataset.
+            These parameters are general and apply to all planets in the set. If an empty dictionary is passed to the class, then the following default values are set:
+                "type": "sh", the type of gravity model to be constructed. Can be 'sh' or 'map'
+                "av_dens_c": 3050.0, kg/m^3, the average density of the crust
+                "av_den_m": 3550.0, kg/m^3, the average density of the mantle
+                "mass": 0.652*1e24, kg, the mass of the planet. Defaults to Mars
+                "radius": 3.396*1e6, m, the radius of the planet. Defaults to Mars
+                "flex_model": 'Thin_Shell', the type of flexure model that is used to construct the MOHO. Only 'Thin_Shell' is accepted at the moment.
+                "moho_parameters": {'Te': 80000.0, 'D_c': 60000.0, 'E': 100.0*1e9, 'v': 0.25}, The parameters that are used to infer the MOHO from topography.
+                    See more detailed description in the Planet class.
+        topography: np.ndarray
+             1D array containing the topography elevation values. Has shape N. Units: m. (Default: None).
+    """
     def __init__(self, size: int, priors: Prior, survey_framework={}, model_framework={}, topography=None):
         self.size = size
         self.priors = priors
@@ -31,17 +57,37 @@ class PlanetDataSet():
             value.setdefault("mass", 0.652*1e24)
             value.setdefault("radius", 3.396*1e6)
             value.setdefault("flex_model", 'Thin_Shell')
-            value.setdefault("moho_parameters", {'Te': 50000.0, 'D_c': 50000.0, 'E': 100.0*1e9, 'v': 0.25})
+            value.setdefault("moho_parameters", {'Te': 80000.0, 'D_c': 60000.0, 'E': 100.0*1e9, 'v': 0.25})
         if name == 'survey_framework':
             if not isinstance(value, dict):
                 raise ValueError("Expected dict for survey_framework.")
-            value.setdefault("noise_scale", 0.0)
-            value.setdefault("ranges", [[-180.0,180.0],[-90.0, 90.0],[0]])
+            value.setdefault("ranges", [[-180.0,180.0],[-90.0, 90.0]])
             value.setdefault("resolution", [2,2])
             value.setdefault("height", 0.0)
         super().__setattr__(name, value)
 
     def make_dataset(self, parameters_dict=None, slim_output=True, repeats=10):
+        """
+        Method that constructs the dataset and creates the self.gravitymaps and self.planets attributes.
+        Parameters:
+        ----------
+            parameters_dict: dict
+                The keys of the dictionary are the different parameters that are used to construct the data set.
+                Each member of the dictionary has to be a 1D array, and these have to have the same length.
+                If None, the priors are sampled for the parameters.
+                Recognised parameters: 'e_c', 'k_c', 'v_c', 'e_m', 'k_m', 'v_m'
+            slim_output: bool
+                Decides whether to create smaller output.
+                If True: The output is a dictionary, with the keys: 'gravity', 'sh_degrees', 'lat', 'long', 'shape', 'resolution'
+                If False: The outputs are lists of classes of Planets and GravityMaps.
+            repeats: int
+                The number of times the same set of parameters are reused during the modelling.
+                Since these are used to create a covariance matrix, which is then used to sample from a multivariate distribution,
+                    the resulting density distributions will still differ.
+        Output:
+        ------
+             Defined by slim_output.
+        """
         start_dataset = datetime.now()
         # Sampling the prior
         if self.size % repeats != 0:
@@ -64,6 +110,7 @@ class PlanetDataSet():
         # Calculating the array of great circle distances
         psi = great_circle_distance(long=Long.flatten()/180.0*np.pi, lat=Lat.flatten()/180.0*np.pi)
 
+
         # Simulating topography if not given
         if self.topography is None:
             print("Making topography...")
@@ -72,7 +119,10 @@ class PlanetDataSet():
 
         # Simulating the MOHO from self.topography
         moho_planet = Planet(lat=Lat, long=Long, resolution=self.survey_framework['resolution'])
-        moho_parameters = self.model_framework['moho_parameters'] | {'rho_m': self.model_framework['av_dens_m'], 'rho_c': self.model_framework['av_dens_c'], 'GM': self.model_framework['mass']*6.6743*1e-11, 'Re': self.model_framework['radius']}
+        moho_parameters = self.model_framework['moho_parameters'] | {'rho_m': self.model_framework['av_dens_m'],
+                                                                        'rho_c': self.model_framework['av_dens_c'],
+                                                                        'GM': self.model_framework['mass']*6.6743*1e-11,
+                                                                        'Re': self.model_framework['radius']}
         moho = moho_planet.make_moho(moho_parameters, topography=self.topography)
 
         start_planets = datetime.now()
@@ -85,15 +135,23 @@ class PlanetDataSet():
                 planet_parameters[key] = parameters_dict[key][i]
 
             # make the matern covariances
-            crust_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_c'], kappa=planet_parameters['k_c'], var=planet_parameters['v_c'])
-            mantle_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_m'], kappa=planet_parameters['k_m'], var=planet_parameters['v_m'])
+            crust_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_c'],
+                                            kappa=planet_parameters['k_c'], var=planet_parameters['v_c'])
+            mantle_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_m'],
+                                            kappa=planet_parameters['k_m'], var=planet_parameters['v_m'])
 
             for j in range(repeats):
-                mantle = Layer(parameters={'av_dens': self.model_framework['av_dens_m'], 'kappa': planet_parameters['k_m'], 'epsilon': planet_parameters['e_m'], 'var': planet_parameters['v_m']})
+                mantle = Layer(parameters={'av_dens': self.model_framework['av_dens_m'],
+                                            'kappa': planet_parameters['k_m'],
+                                            'epsilon': planet_parameters['e_m'],
+                                            'var': planet_parameters['v_m']})
                 mantle.matern = mantle_matern.copy()
                 mantle.topo_model = moho.copy()
 
-                crust = Layer(parameters={'av_dens': self.model_framework['av_dens_c'], 'kappa': planet_parameters['k_c'], 'epsilon': planet_parameters['e_c'], 'var': planet_parameters['v_c']})
+                crust = Layer(parameters={'av_dens': self.model_framework['av_dens_c'],
+                                            'kappa': planet_parameters['k_c'],
+                                            'epsilon': planet_parameters['e_c'],
+                                            'var': planet_parameters['v_c']})
                 crust.matern = crust_matern.copy()
                 crust.topo_model = self.topography.copy()
 
@@ -102,7 +160,9 @@ class PlanetDataSet():
                 crust.matern = None
                 mantle.matern = None
 
-                planet = Planet(parameters=planet_parameters, lat=Lat, long=Long, resolution=self.survey_framework['resolution'], psi=psi, crust=crust, mantle=mantle, mass=self.model_framework['mass'], radius=self.model_framework['radius'])
+                planet = Planet(parameters=planet_parameters, lat=Lat, long=Long,
+                                resolution=self.survey_framework['resolution'], psi=psi, crust=crust,
+                                mantle=mantle, mass=self.model_framework['mass'], radius=self.model_framework['radius'])
                 planets.append(planet)
                 if (i+1)*(j+1) % 100 == 0:
                     print(f"{i*j}/{self.size} planets made. \t Time taken: {datetime.now()-start_planets}")
@@ -118,13 +178,33 @@ class PlanetDataSet():
 
         if slim_output:
             for key in parameters_dict.keys():
-                parameters_dict[key] = np.repeat(parameters_dict[key], repeats) # repeating the same parameters 10 times since the matern was reused
-            return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps], 'sh_degrees': gravitymaps[0][:,:2], 'lat': self.planets[0].lat, 'long': self.planets[0].long, 'shape': self.planets[0].shape, 'resolution': self.planets[0].resolution}
+                # repeating the same parameters 10 times since the matern was reused
+                parameters_dict[key] = np.repeat(parameters_dict[key], repeats)
+                return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps],
+                                        'sh_degrees': gravitymaps[0][:,:2],
+                                        'lat': self.planets[0].lat,
+                                        'long': self.planets[0].long,
+                                        'shape': self.planets[0].shape,
+                                        'resolution': self.planets[0].resolution}
         else:
             return planets, gravitymaps
 
-
     def forward_model(self, return_SH=False, slim_output=True):
+        """
+        Computes the gravity from the planet parameters. Functions the same as the method with the same name in the Planet class,
+        but only opens octave once, which provides significant speed-up.
+        Parameters
+        ----------
+            return_SH: bool
+                If True, only the SH coefficients are returned, if False, then the gravity maps are constructed also. (Default: False)
+            slim_output: bool
+                If True and return_SH is True: a list of SH coefficients of the planets
+                        and return_SH is False: a list of the GravityMaps
+                if False: a list of the GravityMaps
+        Output:
+        ------
+             Defined by slim_output.
+        """
         start = datetime.now()
         octave = Oct2Py()
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -146,7 +226,8 @@ class PlanetDataSet():
                             'l3': {'bound': np.zeros(p.shape)}}
             V = octave.model_SH_analysis(input_model, nout=1)
             if return_SH:
-                gravity = GravityMap(lat=p.lat, long=p.long, height=height, shape=p.shape, resolution=p.resolution, coeffs=V)
+                gravity = GravityMap(lat=p.lat, long=p.long,
+                                    height=height, shape=p.shape, resolution=p.resolution, coeffs=V)
             else:
                 latLim = [np.min(np.min(p.lat)), np.max(np.max(p.lat)), p.resolution[0]]
                 lonLim = [np.min(np.min(p.long)), np.max(np.max(p.long)), p.resolution[1]]
@@ -158,7 +239,8 @@ class PlanetDataSet():
                 data.vec.Z = np.flip(data.vec.Z)
                 g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
                 grad = {'zz': data.ten.Tzz}
-                gravity = GravityMap(g=g, grad=grad, lat=p.lat, long=p.long, height=height, shape=p.shape, coeffs=V, resolution=p.resolution)
+                gravity = GravityMap(g=g, grad=grad, lat=p.lat, long=p.long,
+                                    height=height, shape=p.shape, coeffs=V, resolution=p.resolution)
             gravitymaps.append(gravity)
             if i+1 % 100 == 0:
                 print(f"{i+1}/{self.size} gravity maps made. \t Time taken: {datetime.now()-start}")
