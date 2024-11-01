@@ -2,7 +2,6 @@ import numpy as np
 import scipy.special
 from datetime import datetime
 import scipy.linalg
-import matplotlib.pyplot as plt
 
 def is_pos_def(x):
     """
