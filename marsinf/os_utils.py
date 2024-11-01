@@ -1,6 +1,9 @@
 import os
 
 def delete_files_in_directory(directory_path):
+    """
+    Function that deletes everything in the specified directory.
+    """
    try:
      with os.scandir(directory_path) as entries:
        for entry in entries:
