@@ -88,7 +88,7 @@ class Planet():
                     self.parameter_labels = list(value.keys())
                 for i, key in enumerate(self.parameter_labels):
                     super().__setattr__(key, value[key])
-                            value.setdefault("type", "sh")
+                value.setdefault("type", "sh")
                 value.setdefault("av_dens_c", 3050.0)
                 value.setdefault("av_den_m", 3550.0)
                 value.setdefault("k_c", 0.6)
