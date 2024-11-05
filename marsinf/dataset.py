@@ -180,12 +180,12 @@ class PlanetDataSet():
             for key in parameters_dict.keys():
                 # repeating the same parameters 10 times since the matern was reused
                 parameters_dict[key] = np.repeat(parameters_dict[key], repeats)
-                return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps],
-                                        'sh_degrees': gravitymaps[0][:,:2],
-                                        'lat': self.planets[0].lat,
-                                        'long': self.planets[0].long,
-                                        'shape': self.planets[0].shape,
-                                        'resolution': self.planets[0].resolution}
+            return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps],
+                                      'sh_degrees': gravitymaps[0][:,:2],
+                                      'lat': self.planets[0].lat,
+                                      'long': self.planets[0].long,
+                                      'shape': self.planets[0].shape,
+                                      'resolution': self.planets[0].resolution}
         else:
             return planets, gravitymaps
 
