@@ -155,7 +155,7 @@ class FlowModel():
 
         self.flowmodel.to(device)
         loss_plot_freq = 10
-        test_freq = 10
+        test_freq = 100
         # Training
         iters_no_improve = 0
         min_val_loss = np.inf
@@ -421,7 +421,8 @@ class FlowModel():
         # print(f"{num} samples drawn. Time taken: \t {end_sample-start_sample}")
         s = s.cpu().numpy()
 
-        s = self.scalers['data'].inv_scale_data(s)[0]
+        s = self.scalers['data'].inv_scale_data(s)
+        s = np.hstack(s)
         l = l.cpu().numpy()
         return s, l
 
