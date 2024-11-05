@@ -38,7 +38,7 @@ class Prior():
                 super().__setattr__(key, value[key])
         super().__setattr__(name, value)
 
-    def sample(self, size, returntype='array'):
+    def sample(self, size, returntype='array', include_set_parameters=True):
         """
         Parameters
         ----------
@@ -55,7 +55,10 @@ class Prior():
             raise ValueError('returntype can only be array or dict.')
         for key in self.keys:
             if isinstance(self.distributions[key], (float, int)):
-                s = np.ones(size)*self.distributions[key]
+                if include_set_parameters:
+                    s = np.ones(size)*self.distributions[key]
+                else:
+                    continue
             elif isinstance(self.distributions[key], list):
                 if len(self.distributions[key]) == 1:
                     s = np.ones(size)*self.distributions[key][0]
@@ -94,7 +97,7 @@ class Prior():
         else:
             plt.show()
 
-    def get_js_divergence(self, samples_to_compare, n=500, num_samples=2000):
+    def get_js_divergence(self, samples_to_compare, n=500, num_samples=2000, verbose=False):
         """Function calculating the Jensen-Shannon divergence between the distribution of the samples of this class and another set of samples.
         The p(x) and q(x) functions are calculated using a KDE of the input samples.
         This is done for each dimension seperately.
@@ -113,7 +116,8 @@ class Prior():
             mean_js: float
                 The mean of the js divergence values.
         """
-        samples = self.sample(size=2000)
+        samples = self.sample(size=2000, include_set_parameters=False)
+
         js = []
         for i, dim in enumerate(samples.T):
             xmin = min([np.min(dim), np.min(samples_to_compare[:num_samples,i])])
@@ -128,6 +132,7 @@ class Prior():
             js.append(js_pq)
         js = np.array(js)
         mean_js = np.mean(js)
-        print(f"JS divergence statistics calculated: Mean = {mean_js}")
+        if verbose:
+            print(f"JS divergence statistics calculated: Mean = {mean_js}")
         return js, mean_js
 
