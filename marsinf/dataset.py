@@ -98,7 +98,7 @@ class PlanetDataSet():
             print(f"Rounding data set size to {dataset_size}")
 
         if parameters_dict is None:
-            parameters_dict = self.priors.sample(size=int(self.size/10), returntype='dict')
+            parameters_dict = self.priors.sample(size=int(self.size/repeats), returntype='dict')
         else:
             if self.parameter_labels != list(parameters_dict.keys()):
                 raise ValueError("The prior and the parameter keys do not match")
@@ -156,7 +156,7 @@ class PlanetDataSet():
                 crust.topo_model = self.topography.copy()
 
                 crust.make_dens_model(seed=None)
-                mantle.make_dens_model(seed=None)
+                mantle.make_dens_model(seed=5) #Change it back!
                 crust.matern = None
                 mantle.matern = None
 
