@@ -2,7 +2,7 @@ import pickle as pkl
 import numpy as np
 import os
 
-def read_files(data_location, filenames, datasize, model_parameters_to_include=['e_c', 'k_c', 'v_c'], noise=None):
+def read_files(data_location, filenames, datasize, model_parameters_to_include=['e_c', 'k_c', 'v_c'], noise=None, noise_augment=False, noise_augment_factor=2):
     """
     Function that read the files defined by data_location and filenames. This is specific for data files describing planets, which contain a dictionary with the parameters and the gravity of planets. Note that SH degrees below 2 will automatically be ignored.
     Parameters
@@ -21,6 +21,8 @@ def read_files(data_location, filenames, datasize, model_parameters_to_include=[
         train_conditional: list
             Has one element, which is an ndarray with shape [dataset size, number of sh coefficients]
     """
+    if noise_augment:
+        datasize = int(datasize/noise_augment_factor)
     train_data, train_conditional = ([],[])
     if isinstance(filenames, str):
         filenames = [filenames]
@@ -30,10 +32,11 @@ def read_files(data_location, filenames, datasize, model_parameters_to_include=[
             td = [dt[key] for key in model_parameters_to_include]
             # removing sh degrees below 2
             degrees = dt['sh_degrees']
-            idx = np.argwhere(degrees[:,0]<2)
+            idx_min = np.array(np.argwhere(degrees[:,0]<2))
             tc = np.array(dt['gravity'])
-            for i in idx:
-                tc = np.delete(tc, i, 1)
+            tc = np.delete(tc, idx_min, 1)
+            #idx_max = np.array(np.argwhere(degrees[:,0]>20))-np.shape(idx_min)[0]
+            #tc = np.delete(tc, idx_max, 1)
             num_deg_ord = np.shape(tc)[1]
             tc = [tc[:,:,0], tc[:,:,1]]
             train_data.append(td)
@@ -67,6 +70,9 @@ def read_files(data_location, filenames, datasize, model_parameters_to_include=[
 
     if noise is not None:
         noise = noise[:num_deg_ord,2:]
+        if noise_augment:
+            train_conditional = [np.repeat(tc, noise_augment_factor, axis=0) for tc in train_conditional]
+            train_data = [np.repeat(td, noise_augment_factor, axis=0) for td in train_data]
         noise_simulation = np.random.normal(loc=0.0, scale=noise, size=(np.shape(train_conditional[0])[0],)+np.shape(noise))
         train_conditional[0] = train_conditional[0] + noise_simulation[:,:,0]
         train_conditional[1] = train_conditional[1] + noise_simulation[:,:,1]
