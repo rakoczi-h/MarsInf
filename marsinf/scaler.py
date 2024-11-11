@@ -14,9 +14,12 @@ class Scaler:
         labels: list
             The name of each data array that is to be scaled. (Default: None)
     """
-    def __init__(self, scalers: list, compressors=None, labels=None):
+    def __init__(self, scalers=None, compressors=None, labels=None):
         self.scalers = scalers
         self.compressors = compressors
+        if self.compressors is not None and self.scalers is not None:
+            if len(self.compressors) != len(self.scalers):
+                raise ValueError('The number of compressors and scalers has to agree')
         self.data_sizes = None
         self.scaled_data_sizes = None
         self.labels = labels
@@ -26,8 +29,10 @@ class Scaler:
             if value is not None:
                 if not isinstance(value, list):
                     raise ValueError('Expected list for compressors')
-                if len(self.scalers) != len(value):
-                    raise ValueError('scalers and compressors have to be the same length')
+        if name == 'scalers':
+            if value is not None:
+                if not isinstance(value, list):
+                    raise ValueError('Expected list for scalers')
         if name == 'labels':
             if value is not None:
                 if not ininstance(value, list):
@@ -51,11 +56,16 @@ class Scaler:
         ------
             np.ndarray
         """
+        if self.compressors is None and self.scalers is None:
+            raise ValueError('Both scalers and compressors are empty. Nothing to do here.')
         if not isinstance(data, list):
             raise ValueError("data has to be a list")
-        if len(data) != len(self.scalers):
-            raise ValueError("The number of scalers and data arrays are not the same.")
-
+        if self.scalers is not None:
+            if len(data) != len(self.scalers):
+                raise ValueError("The number of scalers and data arrays are not the same.")
+        if self.compressors is not None:
+            if len(data) != len(self.compressors):
+                raise ValueError("The number of compressors and data arrays are not the same.")
         if fit:
             print("Fitting scaler and compressor to data set...")
         else:
@@ -69,18 +79,17 @@ class Scaler:
         data_rescaled = []
         for i, d in enumerate(data):
             if self.compressors is not None:
-                print('compressing')
                 if self.compressors[i] is not None:
                     if fit:
                         d = self.compressors[i].fit_transform(d)
                     else:
                         d = self.compressors[i].transform(d)
-            if fit:
-                d = self.scalers[i].fit_transform(d.flatten()[...,np.newaxis])
-            else:
-                d = self.scalers[i].transform(d.flatten()[...,np.newaxis])
+            if self.scalers is not None:
+                if fit:
+                    d = self.scalers[i].fit_transform(d.flatten()[...,np.newaxis])
+                else:
+                    d = self.scalers[i].transform(d.flatten()[...,np.newaxis])
             if self.compressors is not None:
-                print('compressing 2')
                 if self.compressors[i] is not None:
                     data_rescaled.append(np.reshape(d, (self.data_sizes[i][0], self.compressors[i].n_components_)))
                 else:
@@ -106,8 +115,9 @@ class Scaler:
 
         if np.shape(data)[1] != desired_shape:
             raise ValueError('The input data is not the right shape.')
-        for s in self.scalers:
-            check_is_fitted(s)
+        if self.scalers is not None:
+            for s in self.scalers:
+                check_is_fitted(s)
         if self.compressors is not None:
             for c in self.compressors:
                 check_is_fitted(c)
@@ -119,8 +129,9 @@ class Scaler:
         data_unscaled = []
         for i, d in enumerate(data):
             data_shape = np.shape(d)
-            d = self.scalers[i].inverse_transform(d.flatten()[..., np.newaxis])
-            d = d.reshape(data_shape)
+            if self.scalers is not None:
+                d = self.scalers[i].inverse_transform(d.flatten()[..., np.newaxis])
+                d = d.reshape(data_shape)
             if self.compressors is not None:
                 if self.compressors[i] is not None:
                     d = self.compressors[i].inverse_transform(d)
