@@ -447,11 +447,11 @@ class FlowModel():
                 The location where the image is saved. (Default: 'pp_plot.png')
         """
         truths = validation_dataset.tensors[0][:int(num_cases)].cpu().numpy()
-        truths = self.scalers['data'].inv_scale_data(truths)[0]
-        if np.shape(truths)[1] > num_params:
-            indices = np.random.randint(np.shape(truths)[1], size=num_params)
+        truths = self.scalers['data'].inv_scale_data(truths)
+        if len(truths) > num_params:
+            indices = np.random.randint(len(truths), size=num_params)
         else:
-            num_params = np.shape(truths)[1]
+            num_params = len(truths)
             indices = np.arange(0, num_params)
         if parameter_labels == None:
             parameter_labels = [f"q{x}" for x in range(num_params)] # number of parameters to get the posterior for (will be 512)
@@ -462,9 +462,10 @@ class FlowModel():
                 posterior = dict()
                 injection = dict()
                 x, _ = self.sample_and_logprob(conditional=validation_dataset.tensors[1][cnt], num=num_samples)
+                print(np.shape(x))
                 for i, key in enumerate(parameter_labels):
                     posterior[key] = x[:,indices[i]]
-                    injection[key] = truths[cnt,indices[i]]
+                    injection[key] = truths[indices[i]][cnt,:].flatten()
                 posterior = pd.DataFrame(posterior)
                 posteriors.append(posterior)
                 injections.append(injection)
