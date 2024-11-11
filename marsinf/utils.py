@@ -15,6 +15,9 @@ def is_pos_def(x):
     """
     return np.all(np.linalg.eigvals(x) > 0)
 
+def get_colors(n):
+    return ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
+
 def make_long_lat(resolution, ranges):
     """
     Makes a longitude and langitude meshgrid based on required ranges and resolution.
