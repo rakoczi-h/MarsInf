@@ -1,6 +1,7 @@
 import numpy as np
 from oct2py import Oct2Py
 import matplotlib.pyplot as plt
+import os
 plt.style.use('seaborn-v0_8')
 
 class GravityMap():
@@ -31,12 +32,9 @@ class GravityMap():
         octave.addpath(os.path.join(dir_path, 'gsh_tools/'))
         latLim = [np.min(np.min(self.lat)), np.max(np.max(self.lat)), self.resolution[0]]
         lonLim = [np.min(np.min(self.long)), np.max(np.max(self.long)), self.resolution[1]]
+
         SHbounds = [2.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
         data = octave.model_SH_synthesis(lonLim,latLim,self.height,SHbounds,self.coeffs,input_model,nout=1)
-        data.vec.X = np.flip(data.vec.X)
-        data.ten.Tzz = np.flip(data.ten.Tzz)
-        data.vec.Y = np.flip(data.vec.Y)
-        data.vec.Z = np.flip(data.vec.Z)
         self.g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
         self.grad = {'zz': data.ten.Tzz}
         octave.exit()
