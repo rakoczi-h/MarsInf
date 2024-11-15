@@ -110,10 +110,7 @@ class Planet():
                 If true, more updates are printed along with timings.
         """
         # Checking whether seeding or not
-        if self.seed:
-            seed  = 4
-        else:
-            seed = None
+        seed = None
 
         if self.psi is None:
             self.psi = great_circle_distance(long=self.long.flatten()/180.0*np.pi, lat=self.lat.flatten()/180.0*np.pi)
@@ -124,6 +121,8 @@ class Planet():
                         lat=self.lat,
                         long=self.long,
                         psi=self.psi)
+        if self.seed:
+            seed = 1
         self.crust.make_dens_model(seed=seed, verbose=verbose)
         self.crust.topo_model = self.topography
         if verbose:
@@ -135,6 +134,8 @@ class Planet():
                         lat=self.lat,
                         long=self.long,
                         psi=self.psi)
+        if self.seed:
+            seed = 3
         self.mantle.make_dens_model(seed=seed, verbose=verbose)
 
         if verbose:
@@ -143,6 +144,8 @@ class Planet():
         # If the topography is not given, random topography is made with pre-set covariance
         if self.crust.topo_model is None:
             print('Generating random topography as self.crust.topo_model is None.')
+            if self.seed:
+                seed = 5
             self.crust.topo_model = self.random_topo(seed=seed, verbose=verbose)
             if verbose:
                 print("Made topography...")
