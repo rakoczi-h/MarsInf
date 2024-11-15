@@ -136,9 +136,9 @@ class PlanetDataSet():
 
             # make the matern covariances
             crust_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_c'],
-                                            kappa=planet_parameters['k_c'], var=planet_parameters['v_c'])
+                                            kappa=planet_parameters['k_c'], sigma=planet_parameters['v_c'])
             mantle_matern = matern_covariance(psi=psi, epsilon=planet_parameters['e_m'],
-                                            kappa=planet_parameters['k_m'], var=planet_parameters['v_m'])
+                                            kappa=planet_parameters['k_m'], sigma=planet_parameters['v_m'])
 
             for j in range(repeats):
                 mantle = Layer(parameters={'av_dens': self.model_framework['av_dens_m'],
