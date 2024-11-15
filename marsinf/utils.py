@@ -103,7 +103,7 @@ def multivariate(cov, mean, size=1, seed=None, cholesky=True, timed=False):
         print(f"Time taken by multivariate sampling: {datetime.now()-start}")
     return samples
 
-def matern_covariance(psi, epsilon, kappa, var, timed=False):
+def matern_covariance(psi, epsilon, kappa, sigma, timed=False):
     """
     Makes a matern covariance matrix with the desired parameters. The chordal matern function is used after Guinness and Fuentes, 2016.
     Parameters
@@ -114,8 +114,8 @@ def matern_covariance(psi, epsilon, kappa, var, timed=False):
             The epsilon parameter, which losely translates to decorrelation distance.
         kappa: float
             The kappa parameter, which controls smoothness
-        var: float
-            The variance.
+        sigma: float
+            The standard deviation.
         timed: bool
             If True, the time taken by the function is printed in the end.
     Output
@@ -129,7 +129,7 @@ def matern_covariance(psi, epsilon, kappa, var, timed=False):
     psi[idx[:,0], idx[:,1]] = 1e-32
     var1 = 4*np.sqrt(kappa)/epsilon*np.sin(psi/2)
     bessel = scipy.special.kv(kappa, var1)
-    M = (var**2)*(2**(1-kappa))/scipy.special.gamma(kappa)*((var1)**kappa)*bessel
+    M = (sigma**2)*(2**(1-kappa))/scipy.special.gamma(kappa)*((var1)**kappa)*bessel
     # adding small value to the diagonal to ensure the matrix is positive definite
     matern = M + 1e-5*np.identity(np.shape(M)[0])
     if timed:
