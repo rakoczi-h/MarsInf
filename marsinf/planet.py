@@ -198,8 +198,8 @@ class Planet():
 
         topography = np.reshape(topography, self.shape) #topography has to be 2D here
         moho = octave.topo2crust(topography, self.shape[0]-1, 'Thin_Shell', moho_parameters, nout=1)
-        # moho = - moho
-        moho = -self.D_c - moho
+        moho = - moho
+        #moho = -self.D_c - moho
         octave.exit()
         if verbose:
             print(f"Time elapsed by make_moho: {datetime.now()-start}")
@@ -261,7 +261,7 @@ class Planet():
 
         V = octave.model_SH_analysis(input_model, nout=1) # getting SH coefficients from model.
         if return_SH:
-            gravity = GravityMap(lat=self.lat, long=self.long, height=height, shape=self.shape, resolution=self.resolution, coeffs=V)
+            gravity = GravityMap(lat=self.lat, long=self.long, height=height, resolution=self.resolution, coeffs=V)
             start_octave_close = datetime.now()
             octave.exit()
             return gravity # returning GravityMap with only coefficients
@@ -271,7 +271,7 @@ class Planet():
 
             latLim = [np.min(np.min(self.lat)), np.max(np.max(self.lat)), self.resolution[0]]
             lonLim = [np.min(np.min(self.long)), np.max(np.max(self.long)), self.resolution[1]]
-            SHbounds = [2.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
+            SHbounds = [0.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
             data = octave.model_SH_synthesis(lonLim,latLim,height,SHbounds,V,input_model,nout=1) # getting the gravity fields
             data.vec.X = np.flip(data.vec.X) # flipping the data to align with topography
             data.ten.Tzz = np.flip(data.ten.Tzz)
@@ -279,7 +279,7 @@ class Planet():
             data.vec.Z = np.flip(data.vec.Z)
             g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
             grad = {'zz': data.ten.Tzz}
-            gravity = GravityMap(g=g, grad=grad, lat=self.lat, long=self.long, height=height, shape=self.shape, coeffs=V, resolution=self.resolution)
+            gravity = GravityMap(g=g, grad=grad, lat=self.lat, long=self.long, height=height, coeffs=V, resolution=self.resolution)
             octave.exit()
             return gravity # returning Gravitymap with both coefficients and fields.
 
