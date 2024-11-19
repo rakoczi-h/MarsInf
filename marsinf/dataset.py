@@ -66,7 +66,7 @@ class PlanetDataSet():
             value.setdefault("height", 0.0)
         super().__setattr__(name, value)
 
-    def make_dataset(self, parameters_dict=None, slim_output=True, repeats=10):
+    def make_dataset(self, parameters_dict=None, slim_output=False, repeats=1):
         """
         Method that constructs the dataset and creates the self.gravitymaps and self.planets attributes.
         Parameters:
@@ -114,7 +114,7 @@ class PlanetDataSet():
         # Simulating topography if not given
         if self.topography is None:
             print("Making topography...")
-            cm_t = matern_covariance(psi, 10, 0.6, 100)
+            cm_t = matern_covariance(psi, 1.5, 0.3, 1000)
             self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=123)
 
         # Simulating the MOHO from self.topography
@@ -156,7 +156,7 @@ class PlanetDataSet():
                 crust.topo_model = self.topography.copy()
 
                 crust.make_dens_model(seed=None)
-                mantle.make_dens_model(seed=456) #Change it back!
+                mantle.make_dens_model(seed=None)
                 crust.matern = None
                 mantle.matern = None
 
@@ -227,11 +227,11 @@ class PlanetDataSet():
             V = octave.model_SH_analysis(input_model, nout=1)
             if return_SH:
                 gravity = GravityMap(lat=p.lat, long=p.long,
-                                    height=height, shape=p.shape, resolution=p.resolution, coeffs=V)
+                                    height=height, resolution=p.resolution, coeffs=V)
             else:
                 latLim = [np.min(np.min(p.lat)), np.max(np.max(p.lat)), p.resolution[0]]
                 lonLim = [np.min(np.min(p.long)), np.max(np.max(p.long)), p.resolution[1]]
-                SHbounds = [2.0, p.shape[0]-1] # truncating at 2nd degree for normalisation
+                SHbounds = [0.0, p.shape[0]-1]
                 data = octave.model_SH_synthesis(lonLim,latLim,height,SHbounds,V,input_model,nout=1)
                 data.vec.X = np.flip(data.vec.X)
                 data.ten.Tzz = np.flip(data.ten.Tzz)
@@ -240,7 +240,7 @@ class PlanetDataSet():
                 g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
                 grad = {'zz': data.ten.Tzz}
                 gravity = GravityMap(g=g, grad=grad, lat=p.lat, long=p.long,
-                                    height=height, shape=p.shape, coeffs=V, resolution=p.resolution)
+                                    height=height, coeffs=V, resolution=p.resolution)
             gravitymaps.append(gravity)
             if i+1 % 100 == 0:
                 print(f"{i+1}/{self.size} gravity maps made. \t Time taken: {datetime.now()-start}")
