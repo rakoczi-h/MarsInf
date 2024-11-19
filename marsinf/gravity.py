@@ -77,7 +77,7 @@ class GravityMap():
         latLim = [np.min(np.min(self.lat)), np.max(np.max(self.lat)), self.resolution[0]]
         lonLim = [np.min(np.min(self.long)), np.max(np.max(self.long)), self.resolution[1]]
 
-        SHbounds = [2.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
+        SHbounds = [0.0, self.shape[0]-1] # truncating at 2nd degree for normalisation
         data = octave.model_SH_synthesis(lonLim,latLim,self.height,SHbounds,self.coeffs,input_model,nout=1)
         self.g = {'X': data.vec.X, 'Y': data.vec.Y, 'Z': data.vec.Z}
         self.grad = {'zz': data.ten.Tzz, 'xx': data.ten.Txx, 'yy': data.ten.Tyy, 'xy': data.ten.Txy, 'xz': data.ten.Txz, 'yz': data.ten.Tyz}
