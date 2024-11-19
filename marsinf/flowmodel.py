@@ -308,8 +308,8 @@ class FlowModel():
         if js is not None:
             plt.figure(figsize=(20,45))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'E']],
-                                  width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,1]),
-                                  gridspec_kw={'wspace' : -0.1, 'hspace' : 0.8})
+                                  width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,2]),
+                                  gridspec_kw={'wspace' : 0.3, 'hspace' : 0.3})
         else:
             plt.figure(figsize=(20,30))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['D', 'E']],
@@ -318,30 +318,28 @@ class FlowModel():
         # Plotting the loss
         ax = axs['A']
         ax.set_box_aspect(0.2)
-        ax.plot(self.loss['train'], label='Train')
-        ax.plot(self.loss['val'], label='Validation')
+        ax.plot(self.loss['train'])
+        ax.plot(self.loss['val'])
         ax.set_xlabel('Epoch', fontdict={'fontsize': 10})
         ax.set_ylabel('Loss', fontdict={'fontsize': 10})
         if timestamp is not None:
             ax.set_title(f"Loss | {timestamp}", fontdict={'fontsize': 10})
         else:
             ax.set_title(f"Loss", fontfict={'fontsize': 10})
-        ax.legend()
 
         # Plotting the latent space distribution
         ax = axs['B']
         for i in range(np.shape(latent.samples)[1]):
             if i == 0:
-                ax.hist(latent.samples[:,i], bins=100, histtype='step', density=True, label='Latent Samples')
+                ax.hist(latent.samples[:,i], bins=100, histtype='step', density=True)
             else:
                 ax.hist(latent.samples[:,i], bins=100, histtype='step', density=True)
         g = np.linspace(-4, 4, 100)
-        ax.plot(g, norm.pdf(g, loc=0.0, scale=1.0), color='navy', label='Unit Gaussian')
+        ax.plot(g, norm.pdf(g, loc=0.0, scale=1.0), color='navy')
         ax.set_box_aspect(0.2)
         ax.set_xlim(-4, 4)
         ax.set_title(f"Latent Space Distribution | Mean KL = {latent.kl_divergence['mean']:.3f}", fontdict={'fontsize': 10})
         ax.set_ylabel('Sample Density', fontdict={'fontsize': 10})
-        ax.legend()
 
         # Plotting the latent space distribution
         if js is not None:
