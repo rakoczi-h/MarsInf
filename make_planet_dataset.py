@@ -12,7 +12,7 @@ from marsinf.utils import great_circle_distance, matern_covariance, multivariate
 
 n = int(sys.argv[1])
 
-saveloc = '/scratch/balta0/2263373r/mars/constant_mantle_simulated_topo_smaller_prior/'
+saveloc = '/scratch/balta0/2263373r/mars/two_layer_real_topo/'
 
 if not os.path.exists(saveloc):
     os.mkdir(saveloc)
@@ -20,9 +20,9 @@ if not os.path.exists(saveloc):
 distributions = {'e_c': ['Uniform', 0.1, 20.0],
                 'k_c': ['Uniform', 0.1, 1.5],
                 'v_c': ['Uniform', 10.0, 500.0], #kg/m^3
-                'e_m': 5.0,
-                'k_m': 0.6,
-                'v_m': 100.0 #kg/m^3
+                'e_m': ['Uniform', 0.1, 20.0],
+                'k_m': ['Uniform', 0.1, 1.5],
+                'v_m': ['Uniform', 10.0, 500.0] #kg/m^3
                 }
 priors = Prior(distributions=distributions)
 
@@ -52,14 +52,14 @@ model_framework =  {'type': 'sh',
 
 
 topography = None
-#df = pd.read_csv('/scratch/balta0/2263373r/mars/megt90n000eb.csv', header=None)
-#
-#shape = [int((survey_framework['ranges'][1][1]-survey_framework['ranges'][1][0])/survey_framework['resolution'][1]), int((survey_framework['ranges'][0][1]-survey_framework['ranges'][0][0])/survey_framework['resolution'][0])]
-#
-#topography = df.to_numpy()
-#topography = np.c_[topography[:,int(np.shape(topography)[1]/2):], topography[:,:int(np.shape(topography)[1]/2)]]
-#topography = sections_mean(topography, shape)
+df = pd.read_csv('/scratch/balta0/2263373r/mars/megt90n000eb.csv', header=None)
 
+shape = [int((survey_framework['ranges'][1][1]-survey_framework['ranges'][1][0])/survey_framework['resolution'][1]), int((survey_framework['ranges'][0][1]-survey_framework['ranges'][0][0])/survey_framework['resolution'][0])]
+
+topography = df.to_numpy()
+topography = np.c_[topography[:,int(np.shape(topography)[1]/2):], topography[:,:int(np.shape(topography)[1]/2)]]
+topography = sections_mean(topography, shape)
+topography = np.flip(topography, axis=0)
 ## ------------- MAKE MATERN COVARIANCES -----------------------
 #long, lat = make_long_lat(resolution = survey_framework['resolution'],
 #                            ranges = survey_framework['ranges'])
@@ -112,27 +112,51 @@ topography = None
 #
 
 # ------------------ MAKING  DATASET FROM SCRATCH ---------------------
-# Make training data
-size = 10000
+## Make training data
+#size = 10000
+#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+#dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
+##dt_train.make_dataset(slim_output=False)
+#file_name = os.path.join(saveloc, f"trainset_{n}.pkl")
+#start_save = datetime.now()
+#with open(file_name, 'wb') as file:
+#    pkl.dump(dt_train, file)
+#print(f"Data set of size {size} made and saved as {file_name}.")
+
+## Make validation data
+#size = 10000
+#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+#dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
+##dt_train.make_dataset(slim_output=False)
+#file_name = os.path.join(saveloc, f"validationset_{n}.pkl")
+#start_save = datetime.now()
+#with open(file_name, 'wb') as file:
+#    pkl.dump(dt_train, file)
+#print(f"Data set of size {size} made and saved as {file_name}.")
+
+
+## Make pp data
+#size = 100
+#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+#dt_train = dt_train.make_dataset(slim_output=True, repeats=1)
+##dt_train.make_dataset(slim_output=False)
+#file_name = os.path.join(saveloc, f"ppset_{n}.pkl")
+#start_save = datetime.now()
+#with open(file_name, 'wb') as file:
+#    pkl.dump(dt_train, file)
+#print(f"Data set of size {size} made and saved as {file_name}.")
+
+## Make test data
+size = 10
 dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
-#dt_train.make_dataset(slim_output=False)
-file_name = os.path.join(saveloc, f"trainset_{n}.pkl")
+#dt_train = dt_train.make_dataset(slim_output=True, repeats=1)
+dt_train.make_dataset(slim_output=False)
+file_name = os.path.join(saveloc, f"example_planets.pkl")
 start_save = datetime.now()
 with open(file_name, 'wb') as file:
     pkl.dump(dt_train, file)
 print(f"Data set of size {size} made and saved as {file_name}.")
 
-# Make validation data
-#size = 10
-#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-#dt_train = dt_train.make_dataset(slim_output=True, repeats=1)
-##dt_train.make_dataset(slim_output=False)
-#file_name = os.path.join(saveloc, f"testset_{n}.pkl")
-#start_save = datetime.now()
-#with open(file_name, 'wb') as file:
-#    pkl.dump(dt_train, file)
-#print(f"Data set of size {size} made and saved as {file_name}.")
 
 # ---------------- MAKING DATASET WITH PRESET PARAMETERS ----------------------
 #size=15
