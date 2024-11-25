@@ -115,7 +115,7 @@ class PlanetDataSet():
         if self.topography is None:
             print("Making topography...")
             cm_t = matern_covariance(psi, 1.5, 0.3, 1000)
-            self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=123)
+            self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=self.model_framework['seed_topography'])
 
         # Simulating the MOHO from self.topography
         moho_planet = Planet(lat=Lat, long=Long, resolution=self.survey_framework['resolution'])
@@ -155,8 +155,8 @@ class PlanetDataSet():
                 crust.matern = crust_matern.copy()
                 crust.topo_model = self.topography.copy()
 
-                crust.make_dens_model(seed=None)
-                mantle.make_dens_model(seed=None)
+                crust.make_dens_model(seed=self.model_framework['seed_crust'])
+                mantle.make_dens_model(seed=self.model_framework['seed_mantle'])
                 crust.matern = None
                 mantle.matern = None
 
@@ -180,8 +180,17 @@ class PlanetDataSet():
             for key in parameters_dict.keys():
                 # repeating the same parameters 10 times since the matern was reused
                 parameters_dict[key] = np.repeat(parameters_dict[key], repeats)
-            return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps],
+            if self.model_framework['type'] == 'sh':
+                return parameters_dict | {'gravity': [g[:,2:] for g in gravitymaps],
                                       'sh_degrees': gravitymaps[0][:,:2],
+                                      'lat': self.planets[0].lat,
+                                      'long': self.planets[0].long,
+                                      'shape': self.planets[0].shape,
+                                      'resolution': self.planets[0].resolution}
+            elif self.model_framework['type'] == 'map':
+                return parameters_dict | {'gravity_coeffs': [g[:,2:] for g in gravitymaps.coeffs],
+                                        'gravity_acceleration': [g for g in gravitymaps.g['Z']],
+                                      'sh_degrees': gravitymaps[0].coeffs[:,:2],
                                       'lat': self.planets[0].lat,
                                       'long': self.planets[0].long,
                                       'shape': self.planets[0].shape,
