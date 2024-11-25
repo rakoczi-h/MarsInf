@@ -46,16 +46,18 @@ class PlanetFlowResults(FlowResults):
         mean_spectrum = np.mean(powerspectra, axis=0)
         std_spectrum = np.std(powerspectra, axis=0)
         plt.grid(zorder=0, linestyle='--')
-        plt.fill_between(sh, original_range['min'][1:], original_range['max'][1:], label='Full Range', color='sandybrown', alpha=0.5, zorder=1)
-        plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='SD', color='indianred', alpha=0.6, zorder=2)
-        for i in range(10):
+        plt.fill_between(sh, original_range['min'][1:], original_range['max'][1:], label='Full Range', color='gray', alpha=0.3, zorder=1)
+        plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.4, zorder=2)
+        plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='SD', color='indianred', alpha=0.8, zorder=3)
+        for i in range(5):
             if i == 0:
-                plt.plot(sh, powerspectra[i,:], color='indianred', linestyle='--', zorder=3, label='Samples', linewidth=1)
+                plt.plot(sh, powerspectra[i,:], color='mediumpurple', linestyle='--', zorder=4, label='Samples', linewidth=1)
             else:
-                plt.plot(sh, powerspectra[i,:], color='indianred', linestyle='--', zorder=3, linewidth=1)
-        plt.plot(sh, mean_spectrum, label='Mean', zorder=4, color='mediumpurple', linewidth=2)
+                plt.plot(sh, powerspectra[i,:], color='mediumpurple', linestyle='--', zorder=4, linewidth=1)
+        plt.plot(sh, mean_spectrum, label='Mean', zorder=5, color='black', linewidth=1)
         plt.legend()
-        plt.xlim(left=0.0)
+        plt.xlim(left=2.0, right=45.0)
+        plt.ylim(np.min(min_spectrum), np.max(max_spectrum))
         plt.yscale('log')
         plt.ylabel('Power')
         plt.xlabel('SH degree')
