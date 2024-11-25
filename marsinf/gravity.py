@@ -2,6 +2,8 @@ import numpy as np
 from oct2py import Oct2Py
 import matplotlib.pyplot as plt
 import os
+
+from .utils import power_spectrum
 plt.style.use('seaborn-v0_8')
 
 class GravityMap():
@@ -94,15 +96,7 @@ class GravityMap():
             sh_degrees: np.ndarray
                 The SH degrees corresponding to each power value. Same length as ps.
         """
-        sqrsum = self.coeffs[:,2]**2+self.coeffs[:,3]**2
-        degrees = np.arange(np.min(self.coeffs[:,0]), np.max(self.coeffs[:,1])+1, 1)
-        self.sh_degrees = degrees
-        ps = []
-        for l in degrees:
-            c = 1/(2*l+1)
-            idx = np.argwhere(self.coeffs[:,0]==l)
-            ps.append(c*np.sum(sqrsum[idx]))
-        self.ps = np.array(ps)
+        self.ps, self.sh_degrees = power_spectrum(self.coeffs)
         return self.ps, self.sh_degrees
 
     def plot_spectrum(self, filename='gravity_spectrum.png'):
