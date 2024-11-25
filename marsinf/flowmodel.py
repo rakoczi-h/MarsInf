@@ -216,7 +216,9 @@ class FlowModel():
         latent_samples, latent_logprobs = self.forward_and_logprob(validation_dataset)
         latent_state = FlowLatent(latent_samples, log_probabilities=latent_logprobs)
         latent_state.get_kl_divergence_statistics()
-        self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train)
+        if prior is not None:
+            js_values, js_mean = self.js_test(validation_dataset, prior=prior)
+        self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train, js=js_values)
 
         print(f"Run time: \t {end_train-start_train}")
 
@@ -308,13 +310,13 @@ class FlowModel():
         if js is not None:
             plt.figure(figsize=(20,45))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'E']],
-                                  width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,2]),
-                                  gridspec_kw={'wspace' : 0.3, 'hspace' : 0.3})
+                                  width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,1.5]),
+                                  gridspec_kw={'wspace' : 0.1, 'hspace' : 0.1})
         else:
             plt.figure(figsize=(20,30))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['D', 'E']],
                       width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1]),
-                      gridspec_kw={'wspace' : -0.1, 'hspace' : 0.8})
+                      gridspec_kw={'wspace' : 0.1, 'hspace' : 0.3})
         # Plotting the loss
         ax = axs['A']
         ax.set_box_aspect(0.2)
