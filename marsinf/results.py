@@ -23,6 +23,8 @@ class FlowResults:
         conditional: np.ndarray or torch.Tensor
             The conditional based on which these samples were generated. Essentially the gravity survey we're inverting
             If it is a torch tensor, it is converted to an np.ndarray
+        survey_coordinates: np.ndarray
+            The coordnates associated with the gravity data. [num of survey points, 3] (x, y, z is the order)
         log_probabilities: np.ndarray
             The log probability associated with each sample
         parameter_labels: list
@@ -39,6 +41,7 @@ class FlowResults:
             raise ValueError ('samples has to be 2D.')
         self.samples = samples
         self.conditional = conditional
+        self.survey_coordinates = survey_coordinates
         self.parameter_labels = parameter_labels
         self.true_parameters = true_parameters
         self.log_probabilities = log_probabilities
@@ -106,7 +109,7 @@ class FlowResults:
         return js
 
 
-    def corner_plot(self, filename='corner.png', prior_bounds=None):
+    def corner_plot(self, filename='corner.png', prior_bounds=None, labels=None):
         """Makes a simple corner plot with a single set of posterior samples.
         Parameter
         ---------
@@ -125,10 +128,11 @@ class FlowResults:
                 plot_range.append([min(dim), max(dim)])
         else:
             plot_range = prior_bounds
-        if self.parameter_labels is None:
-            labels = [f"q{x}" for x in range(self.nparameters)]
-        else:
-            labels = self.parameter_labels
+        if labels is None:
+            if self.parameter_labels is None:
+                labels = [f"q{x}" for x in range(self.nparameters)]
+            else:
+                labels = self.parameter_labels
         CORNER_KWARGS = dict(smooth=0.9,
                             show_titles=True,
                             label_kwargs=dict(fontsize=20),
@@ -140,9 +144,10 @@ class FlowResults:
                             fill_contours=True,
                             max_n_ticks=3,
                             range=plot_range,
-                            labels=labels)
+                            labels=labels,
+                            color='sandybrown')
 
-        figure = corner.corner(self.samples, **CORNER_KWARGS, color='#ff7f00')
+        figure = corner.corner(self.samples, **CORNER_KWARGS)
         if self.true_parameters is not None:
             values = self.true_parameters
             corner.overplot_lines(figure, values, color="black")
@@ -155,7 +160,7 @@ class FlowResults:
         print("Made corner plot...")
 
     # fix overlaid corners method !!
-    def overlaid_corner(self, other_samples, dataset_labels = None, parameter_labels = None, filename='corner_plot_compare.png',  prior_bounds=None):
+    def overlaid_corner(self, other_samples, dataset_labels = None, labels = None, filename='corner_plot_compare.png',  prior_bounds=None):
         """
         Plots multiple corners on top of each other
         Parameters
@@ -197,13 +202,11 @@ class FlowResults:
                 )
         else:
             plot_range = prior_bounds
-        if parameter_labels is None:
+        if labels is None:
             if self.parameter_labels is None:
                 labels = [f"q{x}" for x in range(self.nparameters)]
             else:
                 labels = self.parameter_labels
-        else:
-            labels = parameter_labels
 
         CORNER_KWARGS = dict(
         smooth=0.9,
@@ -236,7 +239,7 @@ class FlowResults:
                 hist_kwargs={'density' : True}
             )
         if self.true_parameters is not None:
-            values = self.true_parameters[0]
+            values = self.true_parameters
             corner.overplot_lines(fig, values, color="black")
             corner.overplot_points(fig, values[None], marker="s", color="black")
         if dataset_labels is not None:
@@ -257,25 +260,10 @@ class FlowResults:
         plt.close()
         print("Made corner plot...")
 
-    def power_spectra_comparison(self, model_framework, priors, filename='power_spectrum_comparison'):
-        parameters_dict = priors.sample(size=np.shape(self.samples)[0], returntype='dict')
-        for i, key in enumerate(self.parameter_labels):
-            parameters_dict[key] = self.samples[:,i]
-
-        results_dataset = PlanetDataSet(priors=priors, size=np.shape(self.samples)[0], model_framework=model_framework)
-
-        results_dict = results_dataset.make_dataset(parameters_dict=parameters_dict, slim_output=True)
-        sh_degrees = results_dict['sh_degrees']
-        powerspectra = []
-        for g in results_dict['gravity']:
-            coeffs = np.c_[sh_degrees, g]
-            print(np.shape(coeffs))
-            ps = power_spectrum(coeffs)
-            powerspectra.append(ps)
-        powerspectra = np.array(powerspectra)
-        min_spectrum = np.min(powerspectra, axis=0)
-        max_spectrum = np.max(powerspectra, axis=0)
-        mean_spectrum = np.mean(powerspectra, axis=0)
-        std_spectrum = np.std(powerspectra, axis=0)
-        print(np.shape(powerspectra))
+    def samples_to_csv(self, filename='samples.csv'):
+        """
+        Saves the samples into a csv.
+        """
+        df = DataFrame(self.samples)
+        df.to_csv(os.path.join(self.directory, filename))
 
