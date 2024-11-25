@@ -18,6 +18,33 @@ def is_pos_def(x):
 def get_colors(n):
     return ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(n)]
 
+def power_spectrum(coeffs):
+    """
+    Computes the power spectrum from the SH coefficients.
+    Parameters
+    ----------
+        coeffs: np.ndarray
+            Array with shape [number of coefficients, 4].
+            The first two columns are the degrees and orders of each coefficient.
+            Third column is Snm and fourth column is Cnm.
+    Output
+    ------
+        ps: np.ndarray
+            The power in each degree. Has the length of the number of SH degrees.
+        sh_degrees: np.ndarray
+            The SH degrees corresponding to each power value. Same length as ps.
+    """
+    sqrsum = coeffs[:,2]**2+coeffs[:,3]**2
+    degrees = np.arange(np.min(coeffs[:,0]), np.max(coeffs[:,1])+1, 1)
+    sh_degrees = degrees
+    ps = []
+    for l in degrees:
+        c = 1/(2*l+1)
+        idx = np.argwhere(coeffs[:,0]==l)
+        ps.append(c*np.sum(sqrsum[idx]))
+    ps = np.array(ps)
+    return ps, sh_degrees
+
 def make_long_lat(resolution, ranges):
     """
     Makes a longitude and langitude meshgrid based on required ranges and resolution.
