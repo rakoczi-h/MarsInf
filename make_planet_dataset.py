@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import sys
 import resource
+import json
 from datetime import datetime
 
 from marsinf.prior import Prior
@@ -35,6 +36,9 @@ survey_framework = {'noise_scale': 0.0, #microGal?
                     'height': 0.0 #m
                     }
 
+with open(os.path.join(saveloc, 'survey_framework.json'), 'w') as file:
+    json.dump(survey_framework, file)
+
 model_framework =  {'type': 'sh',
                     'av_dens_c': 3050.0, #kg/m^3
                     'av_dens_m': 3550.0, #kg/m^3
@@ -47,9 +51,14 @@ model_framework =  {'type': 'sh',
                                         'Re': 3.396*1e6 #m
                                         },
                     'mass': 6.4171*1e23, #kg
-                    'radius': 3.396*1e6 #m
+                    'radius': 3.396*1e6, #m
+                    'seed_topography': None,
+                    'seed_mantle': None,
+                    'seed_crust': None
                     }
 
+with open(os.path.join(saveloc, 'model_framework.json'), 'w') as file:
+    json.dump(model_framework, file)
 
 topography = None
 df = pd.read_csv('/scratch/balta0/2263373r/mars/megt90n000eb.csv', header=None)
@@ -146,16 +155,16 @@ topography = np.flip(topography, axis=0)
 #    pkl.dump(dt_train, file)
 #print(f"Data set of size {size} made and saved as {file_name}.")
 
-## Make test data
-size = 10
-dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-#dt_train = dt_train.make_dataset(slim_output=True, repeats=1)
-dt_train.make_dataset(slim_output=False)
-file_name = os.path.join(saveloc, f"example_planets.pkl")
-start_save = datetime.now()
-with open(file_name, 'wb') as file:
-    pkl.dump(dt_train, file)
-print(f"Data set of size {size} made and saved as {file_name}.")
+### Make test data
+#size = 10
+#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+##dt_train = dt_train.make_dataset(slim_output=True, repeats=1)
+#dt_train.make_dataset(slim_output=False)
+#file_name = os.path.join(saveloc, f"example_planets.pkl")
+#start_save = datetime.now()
+#with open(file_name, 'wb') as file:
+#    pkl.dump(dt_train, file)
+#print(f"Data set of size {size} made and saved as {file_name}.")
 
 
 # ---------------- MAKING DATASET WITH PRESET PARAMETERS ----------------------
