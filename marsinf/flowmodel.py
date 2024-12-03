@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
-from glasflow.flows import RealNVP
+from glasflow.flows import RealNVP, CouplingNSF
 from sklearn.model_selection import train_test_split
 from datetime import datetime
 import os
@@ -16,6 +16,7 @@ from .latent import FlowLatent
 from .plot import make_pp_plot
 from .scaler import Scaler
 from .prior import Prior
+from .datareader import DataReader
 
 plt.style.use('seaborn-v0_8-deep')
 
@@ -49,7 +50,7 @@ class FlowModel():
         save_location: str
             The directory where the flow model and its outputs are saved.
     """
-    def __init__(self, hyperparameters=None, flowmodel=None, datasize=None, scalers={"conditional": None, "data": None}):
+    def __init__(self, hyperparameters=None, flowmodel=None, datasize=None, scalers={"conditional": None, "data": None}, flowtype='RealNVP'):
         self.flowmodel = flowmodel
         self.hyperparameters = hyperparameters
         self.datasize = datasize
@@ -57,6 +58,7 @@ class FlowModel():
         self.loss = {"val": [], "train": []}
         self.save_location = ""
         self.data_location = ""
+        self.flowtype = flowtype
 
     def __setattr__(self, name, value):
         if name == 'hyperparameters':
@@ -65,6 +67,7 @@ class FlowModel():
                     raise ValueError('Expected dict for hyperparameters.')
                 value.setdefault('batch_norm', True)
                 value.setdefault('early_stopping', False)
+                value.setdefault('dropout_probability', 0.0)
         if name == 'save_location':
             if not value == '' and not os.path.exists(value):
                 os.mkdir(value)
@@ -110,7 +113,7 @@ class FlowModel():
         self.flowmodel.load_state_dict(torch.load(os.path.join(location, 'flow.pt')))
         self.flowmodel.to(device)
 
-    def train(self, optimiser: torch.optim, validation_dataset: torch.utils.data.TensorDataset, train_dataset: torch.utils.data.TensorDataset, scheduler=None, device=torch.device('cuda'), prior=None):
+    def train(self, optimiser: torch.optim, validation_datareader: DataReader, train_datareader: DataReader, scheduler=None, device=torch.device('cuda'), prior=None):
         """
         The main training function, which trains, validates and plots diagnostics.
         Parameters
@@ -141,6 +144,7 @@ class FlowModel():
         print(f"n_blocks_per_trans: \t {self.hyperparameters['n_blocks_per_transform']}")
         print(f"n_neurons: \t\t {self.hyperparameters['n_neurons']}")
         print(f"batch_norm: \t\t {self.hyperparameters['batch_norm']}")
+        print(f"dropout_probability: \t {self.hyperparameters['dropout_probability']}")
         print(f"batch_size: \t\t {self.hyperparameters['batch_size']}")
         print(f"optimiser: \t\t {type (optimiser).__name__}")
         print(f"scheduler: \t\t {type (scheduler).__name__}")
@@ -148,9 +152,17 @@ class FlowModel():
         print(f"initial learning rate: \t {self.hyperparameters['lr']}")
         print("----------------------------------------")
 
-        if train_dataset.tensors[0].shape[0] != self.datasize:
-            raise ValueError("The size of the training data set does not agree with the desired datasize.")
-        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.hyperparameters['batch_size'], shuffle=True)
+        # if a chunksize is given for the dataloader, then the filenames are split into sublists
+        if train_datareader.chunk_size is not None:
+            train_filenames = train_datareader.split_filenames(randomise=True)
+        else:
+            train_data, train_conditional = train_datareader.read_files()
+            train_dataset = self.make_tensor_dataset(train_data, train_conditional, device=device, scale=True)
+            train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.hyperparameters['batch_size'], shuffle=True)
+
+        # Reading all the validation data in advance
+        validation_data, validation_conditional = validation_datareader.read_files()
+        validation_dataset = self.make_tensor_dataset(validation_data, validation_conditional, device=device, scale=True)
         validation_loader = torch.utils.data.DataLoader(validation_dataset, batch_size=self.hyperparameters['batch_size'], shuffle=True)
 
         self.flowmodel.to(device)
@@ -162,8 +174,20 @@ class FlowModel():
         start_train = datetime.now()
         for i in range(self.hyperparameters['epochs']):
             start_epoch = datetime.now()
-            train_loss, val_loss = self.train_iter(optimiser, validation_loader, train_loader)
-            self.loss['train'].append(train_loss)
+            # Reading the training data in chunks
+            if train_datareader.chunk_size is not None:
+                train_loss = 0.0
+                for tf in train_filenames:
+                    train_data, train_conditional = train_datareader.read_files(filenames=tf)
+                    train_dataset = self.make_tensor_dataset(train_data, train_conditional, device=device, scale=True)
+                    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.hyperparameters['batch_size'], shuffle=True)
+                    train_loss = self.train_iter(optimiser, train_loader)
+                    train_loss += train_loss
+                self.loss['train'].append(train_loss/len(train_filenames))
+            else:
+                train_loss = self.train_iter(optimiser, train_loader)
+                self.loss['train'].append(train_loss)
+            val_loss = self.validation_iter(validation_loader)
             self.loss['val'].append(val_loss)
             if scheduler is not None:
                 if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
@@ -222,7 +246,7 @@ class FlowModel():
 
         print(f"Run time: \t {end_train-start_train}")
 
-    def train_iter(self, optimiser: torch.optim, validation_loader, train_loader):
+    def train_iter(self, optimiser: torch.optim, train_loader):
         """
         The training iteration function. A completion of one of these iteration is considered one epoch. Called in train function.
             optimiser: torch.optim
@@ -242,7 +266,14 @@ class FlowModel():
             optimiser.step()
             train_loss += _loss.item()
         train_loss = train_loss / len(train_loader)
+        return train_loss
 
+    def validation_iter(self, validation_loader):
+        """
+        The validation iteration function.C alled in train function after each epoch of training.
+            validation_loader: torch.data.DataLoader
+                The dataloader containing the validation data
+        """
         self.flowmodel.eval()
         val_loss = 0.0
         for batch in validation_loader:
@@ -251,20 +282,36 @@ class FlowModel():
                 _loss = -self.flowmodel.log_prob(x, conditional=y).mean().item()
             val_loss += _loss
         val_loss = val_loss / len(validation_loader)
-        return train_loss, val_loss
+        return val_loss
 
     def construct(self):
         """
         Makes the RealNVP flow from the hyperparameters.
         """
-        flow = RealNVP(
-            n_inputs=self.hyperparameters['n_inputs'],
-            n_transforms=self.hyperparameters['n_transforms'],
-            n_conditional_inputs=self.hyperparameters['n_conditional_inputs'],
-            n_neurons=self.hyperparameters['n_neurons'],
-            n_blocks_per_transform=self.hyperparameters['n_blocks_per_transform'],
-            batch_norm_between_transforms=self.hyperparameters['batch_norm'], #!
-        )
+        if self.flowtype == 'RealNVP':
+            flow = RealNVP(
+                n_inputs=self.hyperparameters['n_inputs'],
+                n_transforms=self.hyperparameters['n_transforms'],
+                n_conditional_inputs=self.hyperparameters['n_conditional_inputs'],
+                n_neurons=self.hyperparameters['n_neurons'],
+                n_blocks_per_transform=self.hyperparameters['n_blocks_per_transform'],
+                batch_norm_between_transforms=self.hyperparameters['batch_norm'], #!
+                dropout_probability = self.hyperparameters['dropout_probability']
+            )
+        elif self.flowtype == 'NSF':
+            flow = CouplingNSF(
+                n_inputs=self.hyperparameters['n_inputs'],
+                n_transforms=self.hyperparameters['n_transforms'],
+                n_conditional_inputs=self.hyperparameters['n_conditional_inputs'],
+                n_neurons=self.hyperparameters['n_neurons'],
+                n_blocks_per_transform=self.hyperparameters['n_blocks_per_transform'],
+                batch_norm_between_transforms=self.hyperparameters['batch_norm'], #!
+                dropout_probability = self.hyperparameters['dropout_probability'],
+                distribution = self.hyperparameters['distribution'],
+                num_bins = self.hyperparameters['num_bins']
+            )
+        else:
+            raise ValueError('flowtype can be NSF or RealNVP')
         self.flowmodel = flow
         return flow
 
@@ -305,13 +352,11 @@ class FlowModel():
             js: np.ndarray
                 with the shape [number of test cases, number of dimensions]. If given, this is used to make a js divergence metric histogram.
         """
-
-
         if js is not None:
             plt.figure(figsize=(20,45))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'E']],
                                   width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,1.5]),
-                                  gridspec_kw={'wspace' : 0.1, 'hspace' : 0.1})
+                                  gridspec_kw={'wspace' : 0.3, 'hspace' : 0.1})
         else:
             plt.figure(figsize=(20,30))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['D', 'E']],
