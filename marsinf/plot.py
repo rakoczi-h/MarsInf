@@ -183,7 +183,7 @@ def plot_js_hist(js_divs, keys, filename='js_hist.png'):
         raise ValueError('The filetype for filename has to be .png')
 
     js_divs_list = []
-    for i in range(np.shape(js_divs)[0]):
+    for i in range(np.shape(js_divs)[1]):
         js_divs_list.append(js_divs[i,:])
     js_divs_all = np.hstack(js_divs_list)
     median = np.median(js_divs_all)
@@ -195,6 +195,50 @@ def plot_js_hist(js_divs, keys, filename='js_hist.png'):
     plt.savefig(filename)
     plt.close()
     return counts, bins, median
+
+def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatter.png'):
+    if filename[-4:] != '.png':
+        raise ValueError('The filetype for filename has to be .png')
+
+
+    fig, axes = plt.subplots(2,2, figsize=[10,10])
+    ax = axes.flatten()
+    js_divs_list = []
+    for i in range(np.shape(js_divs)[1]):
+        js_divs_list.append(js_divs[:,i])
+    js_divs_all = np.hstack(js_divs_list)
+    median = np.median(js_divs_all)
+    ax[0].hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='stepfilled', alpha=0.5, range=(0, 0.6), density=False, label=keys)
+    ax[0].hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='step', range=(0, 0.6), density=False, color=['black' for i in js_divs_list])
+    ax[0].set_xscale('log')
+    ax[0].legend()
+    ax[0].set_xlabel("JS Divergence", fontsize=14)
+    ax[0].set_ylabel("Counts", fontsize=14)
+
+    ax[1].grid(zorder=0, linestyle='--')
+    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2)
+    #ax[1].set_yscale('log')
+    ax[1].set_ylabel("JS Divergence", fontsize=14)
+    ax[1].set_xlabel(keys[0], fontsize=14)
+    ax[1].yaxis.set_label_position("right")
+    ax[1].yaxis.tick_right()
+
+    ax[2].grid(zorder=0, linestyle='--')
+    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2)
+    #ax[2].set_yscale('log')
+    ax[2].set_ylabel("JS Divergence", fontsize=14)
+    ax[2].set_xlabel(keys[1], fontsize=14)
+
+    ax[3].grid(zorder=0, linestyle='--')
+    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2)
+    #ax[3].set_yscale('log')
+    ax[3].set_ylabel("JS Divergence", fontsize=14)
+    ax[3].set_xlabel(keys[2], fontsize=14)
+    ax[3].yaxis.set_label_position("right")
+    ax[3].yaxis.tick_right()
+
+    plt.savefig(filename)
+    plt.close()
 
 def make_gif(image_names, image_location='', filename='gif.gif'):
     """
