@@ -2,6 +2,7 @@ import numpy as np
 import scipy.special
 from datetime import datetime
 import scipy.linalg
+from scipy.stats import kstest
 
 def is_pos_def(x):
     """
@@ -187,3 +188,6 @@ def sections_mean(input_arr, shape):
             output[i,j] = jj
     return output
 
+def ks_test(samples_1, samples_2):
+    ksresults = kstest(samples_1, samples_2)
+    return ksresults.pvalue
