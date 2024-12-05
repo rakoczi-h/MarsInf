@@ -95,7 +95,7 @@ class PlanetDataSet():
             if dataset_size_new < self.size:
                 dataset_size_new = dataset_size_new + repeats
             self.size = dataset_size_new
-            print(f"Rounding data set size to {dataset_size}")
+            print(f"Rounding data set size to {dataset_size_new}")
 
         if parameters_dict is None:
             parameters_dict = self.priors.sample(size=int(self.size/repeats), returntype='dict')
