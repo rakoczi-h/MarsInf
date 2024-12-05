@@ -25,12 +25,33 @@ class PlanetFlowResults(FlowResults):
         self.survey_framework= survey_framework
         self.priors = priors
 
-    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison'):
-        parameters_dict = self.priors.sample(size=np.shape(self.samples)[0], returntype='dict')
+    def enforce_priors(self):
+        samples = self.samples.copy()
+        print(np.shape(samples))
         for i, key in enumerate(self.parameter_labels):
-            parameters_dict[key] = self.samples[:,i]
+            low = self.priors.distributions[key][1]
+            high = self.priors.distributions[key][2]
+            print(low, high)
+            idx = np.argwhere(samples[:,i]<low)
+            samples = np.delete(samples, idx, axis=0)
+            idx = np.argwhere(samples[:,i]>high)
+            samples = np.delete(samples, idx, axis=0)
+        print(np.shape(samples))
+        return samples
 
-        results_dataset = PlanetDataSet(priors=self.priors, size=np.shape(self.samples)[0], model_framework=self.model_framework, survey_framework=self.survey_framework)
+    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False):
+
+
+        if enforce_prior_bounds:
+            samples = self.enforce_priors()
+        else:
+            samples = self.samples
+
+        parameters_dict = self.priors.sample(size=np.shape(samples)[0], returntype='dict')
+        for i, key in enumerate(self.parameter_labels):
+            parameters_dict[key] = samples[:,i]
+
+        results_dataset = PlanetDataSet(priors=self.priors, size=np.shape(samples)[0], model_framework=self.model_framework, survey_framework=self.survey_framework)
 
         results_dict = results_dataset.make_dataset(parameters_dict=parameters_dict, slim_output=True, repeats=1)
         sh_degrees = results_dict['sh_degrees']
@@ -54,7 +75,8 @@ class PlanetFlowResults(FlowResults):
         mean_spectrum = np.mean(powerspectra, axis=0)
         std_spectrum = np.std(powerspectra, axis=0)
         plt.grid(zorder=0, linestyle='--')
-        plt.fill_between(sh, original_range['min'][1:], original_range['max'][1:], label='Full Range', color='gray', alpha=0.3, zorder=1)
+        if original_range is not None:
+            plt.fill_between(sh, original_range['min'][1:], original_range['max'][1:], label='Full Range', color='gray', alpha=0.3, zorder=1)
         plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.4, zorder=2)
         plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='Sample SD', color='mediumpurple', alpha=0.5, zorder=3)
 #        for i in range(5):
