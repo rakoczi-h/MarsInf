@@ -201,7 +201,7 @@ class FlowModel():
                 df_loss = pd.DataFrame(data)
                 df_loss.to_csv(os.path.join(self.save_location, 'loss.csv'))
             # Testing
-            if not i % test_freq and i != 0:
+            if not i % test_freq:
                 torch.save(self.flowmodel.state_dict(), os.path.join(self.save_location, 'flow.pt'))
                 print("----------------------------------------")
                 start_test = datetime.now()
