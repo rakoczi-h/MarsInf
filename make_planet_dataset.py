@@ -11,9 +11,9 @@ from marsinf.prior import Prior
 from marsinf.dataset import PlanetDataSet
 from marsinf.utils import great_circle_distance, matern_covariance, multivariate, make_long_lat, sections_mean
 
-n = int(sys.argv[1])
+#n = int(sys.argv[1])
 
-saveloc = '/scratch/balta0/2263373r/mars/two_layer_real_topo/'
+saveloc = '/scratch/balta0/2263373r/mars/constant_mantle_simulated_topo_smaller_prior/'
 
 if not os.path.exists(saveloc):
     os.mkdir(saveloc)
@@ -21,9 +21,9 @@ if not os.path.exists(saveloc):
 distributions = {'e_c': ['Uniform', 0.1, 20.0],
                 'k_c': ['Uniform', 0.1, 1.5],
                 'v_c': ['Uniform', 10.0, 500.0], #kg/m^3
-                'e_m': ['Uniform', 0.1, 20.0],
-                'k_m': ['Uniform', 0.1, 1.5],
-                'v_m': ['Uniform', 10.0, 500.0] #kg/m^3
+                'e_m': 10.0,
+                'k_m': 0.6,
+                'v_m': 100.0 #kg/m^3
                 }
 priors = Prior(distributions=distributions)
 
@@ -52,8 +52,8 @@ model_framework =  {'type': 'sh',
                                         },
                     'mass': 6.4171*1e23, #kg
                     'radius': 3.396*1e6, #m
-                    'seed_topography': None,
-                    'seed_mantle': None,
+                    'seed_topography': 123,
+                    'seed_mantle': 456,
                     'seed_crust': None
                     }
 
@@ -61,14 +61,14 @@ with open(os.path.join(saveloc, 'model_framework.json'), 'w') as file:
     json.dump(model_framework, file)
 
 topography = None
-df = pd.read_csv('/scratch/balta0/2263373r/mars/megt90n000eb.csv', header=None)
-
-shape = [int((survey_framework['ranges'][1][1]-survey_framework['ranges'][1][0])/survey_framework['resolution'][1]), int((survey_framework['ranges'][0][1]-survey_framework['ranges'][0][0])/survey_framework['resolution'][0])]
-
-topography = df.to_numpy()
-topography = np.c_[topography[:,int(np.shape(topography)[1]/2):], topography[:,:int(np.shape(topography)[1]/2)]]
-topography = sections_mean(topography, shape)
-topography = np.flip(topography, axis=0)
+#df = pd.read_csv('/scratch/balta0/2263373r/mars/megt90n000eb.csv', header=None)
+#
+#shape = [int((survey_framework['ranges'][1][1]-survey_framework['ranges'][1][0])/survey_framework['resolution'][1]), int((survey_framework['ranges'][0][1]-survey_framework['ranges'][0][0])/survey_framework['resolution'][0])]
+#
+#topography = df.to_numpy()
+#topography = np.c_[topography[:,int(np.shape(topography)[1]/2):], topography[:,:int(np.shape(topography)[1]/2)]]
+#topography = sections_mean(topography, shape)
+#topography = np.flip(topography, axis=0)
 ## ------------- MAKE MATERN COVARIANCES -----------------------
 #long, lat = make_long_lat(resolution = survey_framework['resolution'],
 #                            ranges = survey_framework['ranges'])
@@ -132,13 +132,12 @@ topography = np.flip(topography, axis=0)
 #    pkl.dump(dt_train, file)
 #print(f"Data set of size {size} made and saved as {file_name}.")
 
-## Make validation data
-#size = 10000
-#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-#dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
-##dt_train.make_dataset(slim_output=False)
+# Make validation data
+size = 1
+dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
+#dt_train.make_dataset(slim_output=False)
 #file_name = os.path.join(saveloc, f"validationset_{n}.pkl")
-#start_save = datetime.now()
 #with open(file_name, 'wb') as file:
 #    pkl.dump(dt_train, file)
 #print(f"Data set of size {size} made and saved as {file_name}.")
