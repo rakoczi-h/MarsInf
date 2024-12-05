@@ -61,7 +61,10 @@ class Prior():
                     continue
             elif isinstance(self.distributions[key], list):
                 if len(self.distributions[key]) == 1:
-                    s = np.ones(size)*self.distributions[key][0]
+                    if include_set_parameters:
+                        s = np.ones(size)*self.distributions[key][0]
+                    else:
+                        continue
                 elif self.distributions[key][0] == 'Uniform':
                     s = np.random.uniform(low=self.distributions[key][1], high=self.distributions[key][2], size=size)
                 elif self.distributions[key][0] == 'Normal':
@@ -116,10 +119,10 @@ class Prior():
             mean_js: float
                 The mean of the js divergence values.
         """
-        samples = self.sample(size=2000, include_set_parameters=False)
-
+        samples = self.sample(size=num_samples, include_set_parameters=False)
         js = []
         for i, dim in enumerate(samples.T):
+            print(np.shape(dim))
             xmin = min([np.min(dim), np.min(samples_to_compare[:num_samples,i])])
             xmax = max([np.max(dim), np.max(samples_to_compare[:num_samples,i])])
             # calculate the minimum and maximum from both
