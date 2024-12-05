@@ -21,6 +21,7 @@ def get_colors(n):
 
 def power_spectrum(coeffs):
     """
+    DO NOT USE
     Computes the power spectrum from the SH coefficients.
     Parameters
     ----------
@@ -45,6 +46,40 @@ def power_spectrum(coeffs):
         ps.append(c*np.sum(sqrsum[idx]))
     ps = np.array(ps)
     return ps, sh_degrees
+
+def degree_variance(coeffs):
+    """
+    Computes the degree variance from the SH coefficients.
+    Parameters
+    ----------
+        coeffs: np.ndarray
+            Array with shape [number of coefficients, 4].
+            The first two columns are the degrees and orders of each coefficient.
+            Third column is Snm and fourth column is Cnm.
+    Output
+    ------
+        degree_variance: np.ndarray
+            The power in each degree. Has the length of the number of SH degrees.
+        sh_degrees: np.ndarray
+            The SH degrees corresponding to each power value. Same length as ps.
+    """
+    start_time = datetime.now()
+    if len(np.shape(coeffs)) == 2:
+        coeffs = np.expand_dims(coeffs, axis=0)
+    sqrsum = coeffs[:,:,2]**2+coeffs[:,:,3]**2
+
+    # Assume that all the elements in the array have the same degrees and orders
+    degrees = np.arange(np.min(coeffs[0,:,0]), np.max(coeffs[0,:,1])+1, 1)
+
+    dv = []
+    for l in degrees:
+        idx = np.argwhere(coeffs[0,:,0]==l)
+        dv.append(np.sum(sqrsum[:,idx], axis=1))
+    dv = np.hstack(dv)
+
+    print(f"Degree variances computed. Time taken: {datetime.now()-start_time}")
+    return dv, degrees
+
 
 def make_long_lat(resolution, ranges):
     """
