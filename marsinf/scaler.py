@@ -14,7 +14,7 @@ class Scaler:
         labels: list
             The name of each data array that is to be scaled. (Default: None)
     """
-    def __init__(self, scalers=None, compressors=None, labels=None):
+    def __init__(self, scalers=None, compressors=None, labels=None, flatten=True):
         self.scalers = scalers
         self.compressors = compressors
         if self.compressors is not None and self.scalers is not None:
@@ -23,6 +23,7 @@ class Scaler:
         self.data_sizes = None
         self.scaled_data_sizes = None
         self.labels = labels
+        self.flatten = flatten # Whether the inputs are flattened before scaling
 
     def __setattr__(self, name, value):
         if name == 'compressors':
@@ -86,9 +87,15 @@ class Scaler:
                         d = self.compressors[i].transform(d)
             if self.scalers is not None:
                 if fit:
-                    d = self.scalers[i].fit_transform(d.flatten()[...,np.newaxis])
+                    if self.flatten:
+                        d = self.scalers[i].fit_transform(d.flatten()[...,np.newaxis])
+                    else:
+                        d = self.scalers[i].fit_transform(d)
                 else:
-                    d = self.scalers[i].transform(d.flatten()[...,np.newaxis])
+                    if self.flatten:
+                        d = self.scalers[i].transform(d.flatten()[...,np.newaxis])
+                    else:
+                        d = self.scalers[i].transform(d)
             if self.compressors is not None:
                 if self.compressors[i] is not None:
                     data_rescaled.append(np.reshape(d, (self.data_sizes[i][0], self.compressors[i].n_components_)))
@@ -130,7 +137,10 @@ class Scaler:
         for i, d in enumerate(data):
             data_shape = np.shape(d)
             if self.scalers is not None:
-                d = self.scalers[i].inverse_transform(d.flatten()[..., np.newaxis])
+                if self.flatten:
+                    d = self.scalers[i].inverse_transform(d.flatten()[..., np.newaxis])
+                else:
+                    d = self.scalers[i].inverse_transform(d)
                 d = d.reshape(data_shape)
             if self.compressors is not None:
                 if self.compressors[i] is not None:
