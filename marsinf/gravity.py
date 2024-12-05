@@ -3,7 +3,7 @@ from oct2py import Oct2Py
 import matplotlib.pyplot as plt
 import os
 
-from .utils import power_spectrum
+from .utils import degree_variance
 plt.style.use('seaborn-v0_8')
 
 class GravityMap():
@@ -89,6 +89,7 @@ class GravityMap():
     def power_spectrum(self):
         """
         Computes the power spectrum from the SH coefficients.
+        NOTE: the power spectrum is defined as the degree variance here.
         Output
         ------
             ps: np.ndarray
@@ -96,7 +97,9 @@ class GravityMap():
             sh_degrees: np.ndarray
                 The SH degrees corresponding to each power value. Same length as ps.
         """
-        self.ps, self.sh_degrees = power_spectrum(self.coeffs)
+        self.ps, self.sh_degrees = degree_variance(self.coeffs)
+        self.ps = self.ps.flatten()
+
         return self.ps, self.sh_degrees
 
     def plot_spectrum(self, filename='gravity_spectrum.png'):
