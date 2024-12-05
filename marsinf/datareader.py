@@ -3,14 +3,17 @@ import pickle as pkl
 import numpy as np
 import random
 
+from .utils import degree_variance
+
 class DataReader():
-    def __init__(self, file_names, data_location, model_parameters_to_include, noise=None, chunk_size=None):
+    def __init__(self, file_names, data_location, model_parameters_to_include, conditional_format='coeffs', noise=None, chunk_size=None):
         self.file_names = file_names
         self.n_files = int(len(file_names))
         self.data_location = data_location
         self.chunk_size = chunk_size
         self.model_parameters_to_include = model_parameters_to_include
         self.noise = noise
+        self.conditional_format = conditional_format
 
     def split_filenames(self, chunk_size=None, randomise=False):
         if chunk_size is not None:
@@ -30,7 +33,6 @@ class DataReader():
             num_sections = int(self.n_files/self.chunk_size)
             print(f"Datasize = {self.chunk_size*num_sections}")
             filenames = [filenames[(n*self.chunk_size):((n+1)*self.chunk_size)] for n in range(num_sections)]
-            print(filenames)
             return filenames
 
     def read_files(self, filenames=None, noise_augment=False, noise_augment_factor=2):
@@ -73,6 +75,8 @@ class DataReader():
                 train_data.append(td)
                 train_conditional.append(tc)
 
+        degrees = np.expand_dims(np.delete(degrees, idx_min, 0), axis=0)
+
 
         tc_list = []
         for i in range(len(train_conditional[0])):
@@ -99,14 +103,22 @@ class DataReader():
         td = []
         train_data = td_list
 
+        degrees_array = np.repeat(degrees, np.shape(train_conditional[0])[0], axis=0)
+
         if self.noise is not None:
             self.noise = self.noise[:num_deg_ord,2:]
             if noise_augment:
                 train_conditional = [np.repeat(tc, noise_augment_factor, axis=0) for tc in train_conditional]
                 train_data = [np.repeat(td, noise_augment_factor, axis=0) for td in train_data]
+                degrees_array = [np.repeat(degrees_array, noise_augment_factor, axis=0)]
             noise_simulation = np.random.normal(loc=0.0, scale=self.noise, size=(np.shape(train_conditional[0])[0],)+np.shape(self.noise))
             train_conditional[0] = train_conditional[0] + noise_simulation[:,:,0]
             train_conditional[1] = train_conditional[1] + noise_simulation[:,:,1]
             print("Added noise to the conditional...")
+
+        if self.conditional_format == 'degree_variance':
+            inp = np.concatenate((degrees_array, np.expand_dims(train_conditional[0], axis=2), np.expand_dims(train_conditional[1], axis=2)), axis=2)
+            dv, _ = degree_variance(inp)
+            train_conditional = [dv]
 
         return train_data, train_conditional
