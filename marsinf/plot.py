@@ -184,11 +184,13 @@ def plot_js_hist(js_divs, keys, filename='js_hist.png'):
 
     js_divs_list = []
     for i in range(np.shape(js_divs)[1]):
-        js_divs_list.append(js_divs[i,:])
+        js_divs_list.append(js_divs[:,i])
     js_divs_all = np.hstack(js_divs_list)
     median = np.median(js_divs_all)
-    counts, bins, _ = plt.hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='barstacked', range=(0, 0.6), density=False, label=keys)
-    plt.xscale('log')
+    #counts, bins, _ = plt.hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='barstacked', range=(0, 0.6), density=False, label=keys)
+    for i, jsl in enumerate(js_divs_list):
+        counts, bins, _ = plt.hist(jsl, bins=10, histtype='step', density=False, label=keys[i])
+    #plt.xscale('log')
     plt.legend()
     plt.xlabel("JS Divergence", fontsize=14)
     plt.ylabel("Counts", fontsize=14)
@@ -208,8 +210,10 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
         js_divs_list.append(js_divs[:,i])
     js_divs_all = np.hstack(js_divs_list)
     median = np.median(js_divs_all)
-    ax[0].hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='stepfilled', alpha=0.5, range=(0, 0.6), density=False, label=keys)
-    ax[0].hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='step', range=(0, 0.6), density=False, color=['black' for i in js_divs_list])
+    print(keys)
+    for i, jsl in enumerate(js_divs_list):
+        ax[0].hist(jsl, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='stepfilled', alpha=0.5, range=(0, 0.6), density=False, label=keys[i])
+        ax[0].hist(jsl, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='step', range=(0, 0.6), density=False, color='black')
     ax[0].set_xscale('log')
     ax[0].legend()
     ax[0].set_xlabel("JS Divergence", fontsize=14)
