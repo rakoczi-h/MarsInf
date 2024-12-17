@@ -122,7 +122,6 @@ class Prior():
         samples = self.sample(size=num_samples, include_set_parameters=False)
         js = []
         for i, dim in enumerate(samples.T):
-            print(np.shape(dim))
             xmin = min([np.min(dim), np.min(samples_to_compare[:num_samples,i])])
             xmax = max([np.max(dim), np.max(samples_to_compare[:num_samples,i])])
             # calculate the minimum and maximum from both
