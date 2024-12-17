@@ -47,7 +47,7 @@ def power_spectrum(coeffs):
     ps = np.array(ps)
     return ps, sh_degrees
 
-def degree_variance(coeffs):
+def degree_variance(coeffs, verbose=False):
     """
     Computes the degree variance from the SH coefficients.
     Parameters
@@ -77,7 +77,8 @@ def degree_variance(coeffs):
         dv.append(np.sum(sqrsum[:,idx], axis=1))
     dv = np.hstack(dv)
 
-    print(f"Degree variances computed. Time taken: {datetime.now()-start_time}")
+    if verbose:
+        print(f"Degree variances computed. Time taken: {datetime.now()-start_time}")
     return dv, degrees
 
 
