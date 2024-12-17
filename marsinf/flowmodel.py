@@ -159,8 +159,8 @@ class FlowModel():
         print(f"batch_norm: \t\t {self.hyperparameters['batch_norm']}")
         print(f"dropout_probability: \t {self.hyperparameters['dropout_probability']}")
         print(f"batch_size: \t\t {self.hyperparameters['batch_size']}")
-        print(f"optimiser: \t\t {type (optimiser).__name__}")
-        print(f"scheduler: \t\t {type (scheduler).__name__}")
+        print(f"optimiser: \t\t {type (self.optimiser).__name__}")
+        print(f"scheduler: \t\t {type (self.scheduler).__name__}")
         print(f"early stopping: \t {self.hyperparameters['early_stopping']}")
         print(f"initial learning rate: \t {self.hyperparameters['lr']}")
         print("----------------------------------------")
@@ -194,11 +194,11 @@ class FlowModel():
                     train_data, train_conditional = train_datareader.read_files(filenames=tf)
                     train_dataset = self.make_tensor_dataset(train_data, train_conditional, device=device, scale=True)
                     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.hyperparameters['batch_size'], shuffle=True)
-                    train_loss = self.train_iter(optimiser, train_loader)
+                    train_loss = self.train_iter(train_loader)
                     train_loss += train_loss
                 self.loss['train'].append(train_loss/len(train_filenames))
             else:
-                train_loss = self.train_iter(optimiser, train_loader)
+                train_loss = self.train_iter(train_loader)
                 self.loss['train'].append(train_loss)
             val_loss = self.validation_iter(validation_loader)
             self.loss['val'].append(val_loss)
@@ -259,7 +259,7 @@ class FlowModel():
 
         print(f"Run time: \t {end_train-start_train}")
 
-    def train_iter(self, optimiser: torch.optim, train_loader):
+    def train_iter(self, train_loader):
         """
         The training iteration function. A completion of one of these iteration is considered one epoch. Called in train function.
             optimiser: torch.optim
@@ -273,10 +273,10 @@ class FlowModel():
         train_loss = 0.0
         for batch in train_loader:
             x, y = batch
-            optimiser.zero_grad()
+            self.optimiser.zero_grad()
             _loss = -self.flowmodel.log_prob(x, conditional=y).mean()
             _loss.backward()
-            optimiser.step()
+            self.optimiser.step()
             train_loss += _loss.item()
         train_loss = train_loss / len(train_loader)
         return train_loss
@@ -366,7 +366,6 @@ class FlowModel():
                 with the shape [number of test cases, number of dimensions]. If given, this is used to make a js divergence metric histogram.
         """
         if js is not None:
-            print('js is not None')
             plt.figure(figsize=(20,50))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'E']],
                                   width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,1.5]),
@@ -532,11 +531,21 @@ class FlowModel():
         print("Made p-p plot...")
         return pvals, combined_pvals
 
-    def saliency(self, conditional, delta=0.1, num=1000, bandwidth=1):
+    def saliency(self, conditional, delta=0.1, num=1000, bandwidth=1, filename=None, parameter_labels=None):
+        if parameter_labels == None:
+            parameter_labels = [f"q{x}" for x in range(num_params)]
+        parameter_labels.append('Log probability')
+
         if conditional.ndim == 1:
             num_sections = int(np.shape(conditional)[0]/bandwidth)
         else:
             num_sections = int(np.shape(conditional)[1]/bandwidth)
+
+        if isinstance(delta, float) or isinstance(delta, int):
+            delta = [delta]
+        if not isinstance(delta, list):
+            raise ValueError('delta has to be list, int or float')
+
         with torch.no_grad():
             conditional = torch.from_numpy(conditional).to(self.device)
             if conditional.dim() == 1:
@@ -544,22 +553,46 @@ class FlowModel():
             conditional = torch.repeat_interleave(conditional, num, axis=0)
             base_distribution = StandardNormal([self.hyperparameters['n_inputs']])
             latent_samples = base_distribution.sample(num).to(self.device)
-            q0, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
+            q0, lq0 = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
             q0 = q0.cpu().numpy()
-            saliency = []
-            for i in range(num_sections):
-                conditional_new = np.zeros(conditional.shape[1])
-                conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*delta # the elements poking over are ignored
-                conditional_new = torch.from_numpy(conditional_new).to(self.device)
-                conditional_new = torch.unsqueeze(conditional_new, dim=0)
-                conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
-                conditional_new = conditional_new + conditional
-                q, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
-                q = q.cpu().numpy()
-                sal = np.sqrt((q0-q)**2)/delta
-                sal = np.mean(sal, axis=0)
-                saliency.append(sal)
-        saliency = np.array(saliency)
+            lq0 = lq0.cpu().numpy()
+            q0 = np.c_[q0, lq0[...,np.newaxis]]
+            saliency_deltas = []
+            for d in delta:
+                saliency = []
+                for i in range(num_sections):
+                    conditional_new = np.zeros(conditional.shape[1])
+                    conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*d # the elements poking over are ignored
+                    conditional_new = torch.from_numpy(conditional_new).to(self.device)
+                    conditional_new = torch.unsqueeze(conditional_new, dim=0)
+                    conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
+                    conditional_new = conditional_new + conditional
+                    q, lq = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
+                    q = q.cpu().numpy()
+                    lq = lq.cpu().numpy()
+                    q = np.c_[q, lq[..., np.newaxis]]
+                    sal = np.sqrt((q0-q)**2)/d
+                    sal = np.mean(sal, axis=0)
+                    saliency.append(sal)
+                saliency = np.array(saliency)
+                saliency = np.repeat(saliency, bandwidth, axis=0)
+                saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0))
+                saliency_deltas.append(saliency)
+
+        if filename is None:
+            filename = 'saliency.png'
+        plt.figure(figsize=(10,15))
+        for j in range(np.shape(saliency)[1]):
+            plt.subplot(np.shape(saliency)[1], 1, j+1)
+            for i, sd in enumerate(saliency_deltas):
+                plt.plot(sd[:,j], label=r'$\Delta x=$'+f"{delta[i]}")
+            plt.legend()
+            plt.title(parameter_labels[j])
+            plt.ylabel('Normalised importance')
+            plt.xlabel('SH degree')
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.save_location, filename))
+        plt.close()
         return saliency
 
 
