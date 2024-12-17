@@ -531,15 +531,38 @@ class FlowModel():
         print("Made p-p plot...")
         return pvals, combined_pvals
 
-    def saliency(self, conditional, delta=0.1, num=1000, bandwidth=1, filename=None, parameter_labels=None):
+    def saliency(self, conditionals, delta=0.1, num=1000, bandwidth=1, filename='saliency.png', parameter_labels=None):
+        """
+        Performs a saliency test with a self-defined parameter importance metric.
+        Parameters
+        ----------
+            conditionals: list or np.ndarray
+                The conditional inputs for which the saliency test is perfomed. If it's a list, it is assumed that the different elements of the list are all independent conditional inputs in the right format so that they can be turned into tensors and used to sample from the network. If it is an array, and it is 1D, it is assumed that it is just one conditional. If it is an array, and it is 2D, the first dimension is assumed to represent the number of conditionals.
+            delta: int, float or list
+                The amount by which the elements of a single conditional input are altered when measuring the sensitivity of the output. If it is a list, then the test is performed for all values individually. (Default: 0.1)
+            num: int
+                The number of samples to draw for each conditional input. (Default: 1000)
+            bandwidth: int
+                The number of elements of the conditional to alter at once. If the length of the conditional is not divisible by this number, the rest of the conditional elements are ignored. (Default: 1)
+            filename: str
+                The name under which the plot is saved. (Default: 'saliency.png')
+            parameter_labels: list
+                The labels of the aprameters in the output. If not given, it is automatically generated. (Default: None)
+        """
+        # Making simulated parameter labels if none are given
         if parameter_labels == None:
             parameter_labels = [f"q{x}" for x in range(num_params)]
         parameter_labels.append('Log probability')
 
-        if conditional.ndim == 1:
-            num_sections = int(np.shape(conditional)[0]/bandwidth)
-        else:
-            num_sections = int(np.shape(conditional)[1]/bandwidth)
+        # Checking the type for the conditional.
+        if isinstance(conditionals, np.ndarray):
+            if conditionals.ndim == 1:
+                    conditionals = conditionals[np.newaxis,...]     # if it is a 1D ndarray, it is assumed that that is one conditional.
+            conditionals = [conditionals[i,...] for i in range(np.shape(conditionals)[0])] # if a multidimensional array, then it is assumed that the first axis signifies the different conditonals
+        if not isinstance(conditionals, list):
+            raise ValueError('conditionals has to be a list or np.ndarray')
+
+        num_sections = int(np.shape(conditionals[0])[0]/bandwidth)
 
         if isinstance(delta, float) or isinstance(delta, int):
             delta = [delta]
@@ -547,40 +570,51 @@ class FlowModel():
             raise ValueError('delta has to be list, int or float')
 
         with torch.no_grad():
-            conditional = torch.from_numpy(conditional).to(self.device)
-            if conditional.dim() == 1:
-                conditional = torch.unsqueeze(conditional, dim=0)
-            conditional = torch.repeat_interleave(conditional, num, axis=0)
-            base_distribution = StandardNormal([self.hyperparameters['n_inputs']])
-            latent_samples = base_distribution.sample(num).to(self.device)
-            q0, lq0 = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
-            q0 = q0.cpu().numpy()
-            lq0 = lq0.cpu().numpy()
-            q0 = np.c_[q0, lq0[...,np.newaxis]]
             saliency_deltas = []
             for d in delta:
-                saliency = []
-                for i in range(num_sections):
-                    conditional_new = np.zeros(conditional.shape[1])
-                    conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*d # the elements poking over are ignored
-                    conditional_new = torch.from_numpy(conditional_new).to(self.device)
-                    conditional_new = torch.unsqueeze(conditional_new, dim=0)
-                    conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
-                    conditional_new = conditional_new + conditional
-                    q, lq = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
-                    q = q.cpu().numpy()
-                    lq = lq.cpu().numpy()
-                    q = np.c_[q, lq[..., np.newaxis]]
-                    sal = np.sqrt((q0-q)**2)/d
-                    sal = np.mean(sal, axis=0)
-                    saliency.append(sal)
-                saliency = np.array(saliency)
-                saliency = np.repeat(saliency, bandwidth, axis=0)
-                saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0))
+                saliency_conditionals = []
+                for c in conditionals:
+                    # defining the conditional
+                    conditional = torch.from_numpy(c).to(self.device)
+                    if conditional.dim() == 1:
+                        conditional = torch.unsqueeze(conditional, dim=0)
+                    conditional = torch.repeat_interleave(conditional, num, axis=0)
+                    # defining the base distribution and sampling it
+                    base_distribution = StandardNormal([self.hyperparameters['n_inputs']])
+                    latent_samples = base_distribution.sample(num).to(self.device)
+                    # getting the corresponding samples from the data space
+                    q0, lq0 = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
+                    q0 = q0.cpu().numpy()
+                    lq0 = lq0.cpu().numpy()
+                    q0 = np.c_[q0, lq0[...,np.newaxis]] # joining the samples and the log probabilities into one array
+
+                    saliency = []
+                    for i in range(num_sections):
+                        conditional_new = np.zeros(conditional.shape[1])
+                        # defining the new conditional
+                        conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*d
+                        # the elements extending beyond the range of num_sections*bandwidth are ignored
+                        conditional_new = torch.from_numpy(conditional_new).to(self.device)
+                        conditional_new = torch.unsqueeze(conditional_new, dim=0)
+                        conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
+                        conditional_new = conditional_new + conditional
+                        # getting the corresponding samples, for the same latent locations as before
+                        q, lq = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
+                        q = q.cpu().numpy()
+                        lq = lq.cpu().numpy()
+                        q = np.c_[q, lq[..., np.newaxis]]
+                        # defining the saliency metric
+                        sal = np.sqrt((q0-q)**2)/d
+                        sal = np.mean(sal, axis=0)
+                        saliency.append(sal)
+                    saliency = np.array(saliency)
+                    saliency = np.repeat(saliency, bandwidth, axis=0)
+                    saliency_conditionals.append(saliency)
+                saliency = np.array(saliency_conditionals)
+                saliency = np.mean(saliency, axis=0) # taking the mean across all the conditionals
+                saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0)) # normalising to the range of 0 to 1
                 saliency_deltas.append(saliency)
 
-        if filename is None:
-            filename = 'saliency.png'
         plt.figure(figsize=(10,15))
         for j in range(np.shape(saliency)[1]):
             plt.subplot(np.shape(saliency)[1], 1, j+1)
