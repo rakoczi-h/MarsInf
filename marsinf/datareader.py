@@ -53,9 +53,9 @@ class DataReader():
                 Has one element, which is an ndarray with shape [dataset size, number of sh coefficients]
         """
 
-
         if filenames is None:
             filenames = self.file_names
+        print(f"Reading: {filenames}")
         train_data, train_conditional = ([],[])
         if isinstance(filenames, str):
             filenames = [filenames]
@@ -106,17 +106,20 @@ class DataReader():
         degrees_array = np.repeat(degrees, np.shape(train_conditional[0])[0], axis=0)
 
         if self.noise is not None:
-            self.noise = self.noise[:num_deg_ord,2:]
+            noise = self.noise.copy()[:num_deg_ord,2:]
             if noise_augment:
                 train_conditional = [np.repeat(tc, noise_augment_factor, axis=0) for tc in train_conditional]
                 train_data = [np.repeat(td, noise_augment_factor, axis=0) for td in train_data]
                 degrees_array = [np.repeat(degrees_array, noise_augment_factor, axis=0)]
-            noise_simulation = np.random.normal(loc=0.0, scale=self.noise, size=(np.shape(train_conditional[0])[0],)+np.shape(self.noise))
+            noise_simulation = np.random.normal(loc=0.0, scale=noise, size=(np.shape(train_conditional[0])[0],)+np.shape(noise))
             train_conditional[0] = train_conditional[0] + noise_simulation[:,:,0]
             train_conditional[1] = train_conditional[1] + noise_simulation[:,:,1]
             print("Added noise to the conditional...")
 
-        if self.conditional_format == 'degree_variance':
+        if self.conditional_format == 'coeffs_combined':
+            train_conditional = [np.hstack(train_conditional)]
+
+        elif self.conditional_format == 'degree_variance':
             inp = np.concatenate((degrees_array, np.expand_dims(train_conditional[0], axis=2), np.expand_dims(train_conditional[1], axis=2)), axis=2)
             dv, _ = degree_variance(inp)
             train_conditional = [dv]
