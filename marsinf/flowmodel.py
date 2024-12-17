@@ -11,6 +11,7 @@ from scipy.stats import norm
 import matplotlib
 import pandas as pd
 import pickle as pkl
+from glasflow.nflows.distributions import StandardNormal
 
 from .latent import FlowLatent
 from .plot import make_pp_plot
@@ -50,7 +51,7 @@ class FlowModel():
         save_location: str
             The directory where the flow model and its outputs are saved.
     """
-    def __init__(self, hyperparameters=None, flowmodel=None, datasize=None, scalers={"conditional": None, "data": None}, flowtype='RealNVP'):
+    def __init__(self, hyperparameters=None, flowmodel=None, datasize=None, scalers={"conditional": None, "data": None}, flowtype='RealNVP', optimiser=None, scheduler=None):
         self.flowmodel = flowmodel
         self.hyperparameters = hyperparameters
         self.datasize = datasize
@@ -59,6 +60,8 @@ class FlowModel():
         self.save_location = ""
         self.data_location = ""
         self.flowtype = flowtype
+        self.optimiser = scheduler
+        self.scheduler = scheduler
 
     def __setattr__(self, name, value):
         if name == 'hyperparameters':
@@ -113,7 +116,7 @@ class FlowModel():
         self.flowmodel.load_state_dict(torch.load(os.path.join(location, 'flow.pt')))
         self.flowmodel.to(device)
 
-    def train(self, optimiser: torch.optim, validation_datareader: DataReader, train_datareader: DataReader, scheduler=None, device=torch.device('cuda'), prior=None):
+    def train(self, validation_datareader: DataReader, train_datareader: DataReader, scheduler=None, optimiser=None, device=torch.device('cuda'), prior=None):
         """
         The main training function, which trains, validates and plots diagnostics.
         Parameters
@@ -131,9 +134,19 @@ class FlowModel():
             prior: Prior object
                 If given, it is used to calcualte JS divergence between prior and posterior as a metric.
         """
+        # Setting up diagnostics folder:
+        if not os.path.exists(os.path.join(self.save_location, 'diagnostics/')):
+            os.mkdir(os.path.join(self.save_location, 'diagnostics/'))
         # Creating the flow
         if self.flowmodel is None:
             self.construct()
+
+        if optimiser is not None:
+            self.optimiser = optimiser
+        if scheduler is not None:
+            self.scheduler = scheduler
+        if self.optimiser is None:
+            raise ValueError('optimiser is required')
 
         print(f"Created flow and sent to {device}...")
         print(f"Network parameters:")
@@ -214,7 +227,7 @@ class FlowModel():
                 js_values = None
                 if prior is not None:
                     js_values, js_mean = self.js_test(validation_dataset, prior=prior)
-                self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train, js=js_values)
+                self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train, js=js_values, filename=os.path.join('diagnostics', f"diagnostics_epoch_{i}.png"))
                 end_test = datetime.now()
                 print(f"Finished testing, time taken: \t {end_test-start_test}")
                 print("----------------------------------------")
@@ -242,7 +255,7 @@ class FlowModel():
         latent_state.get_kl_divergence_statistics()
         if prior is not None:
             js_values, js_mean = self.js_test(validation_dataset, prior=prior)
-        self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train, js=js_values)
+        self.plot_flow_diagnostics(latent_state, timestamp=start_test-start_train, js=js_values, filename='diagnostics_final.png')
 
         print(f"Run time: \t {end_train-start_train}")
 
@@ -341,7 +354,7 @@ class FlowModel():
         plt.savefig(os.path.join(self.save_location, "loss.png"))
         plt.close(
 )
-    def plot_flow_diagnostics(self, latent: FlowLatent, timestamp=None, js=None):
+    def plot_flow_diagnostics(self, latent: FlowLatent, timestamp=None, js=None, filename='diagnostics.png'):
         """
         Plots diagnostics during training.
         Parameters:
@@ -353,10 +366,11 @@ class FlowModel():
                 with the shape [number of test cases, number of dimensions]. If given, this is used to make a js divergence metric histogram.
         """
         if js is not None:
-            plt.figure(figsize=(20,45))
+            print('js is not None')
+            plt.figure(figsize=(20,50))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'E']],
                                   width_ratios=np.array([1,1]), height_ratios=np.array([1,1,1,1.5]),
-                                  gridspec_kw={'wspace' : 0.3, 'hspace' : 0.1})
+                                  gridspec_kw={'wspace' : 0.3, 'hspace' : 1.0})
         else:
             plt.figure(figsize=(20,30))
             fig, axs = plt.subplot_mosaic([['A', 'A'], ['B', 'B'], ['D', 'E']],
@@ -414,7 +428,7 @@ class FlowModel():
         cbar_ax = fig.add_axes([0.8, 0.1, 0.02, 0.2]) # left, bottom, width, height
         fig.colorbar(im, cax=cbar_ax, label='corr coeff')
 
-        plt.savefig(os.path.join(self.save_location, "diagnostics.png"), transparent=False)
+        plt.savefig(os.path.join(self.save_location, filename), transparent=False)
         plt.close()
 
     # ------------------------ Drawing samples ------------------------------------
@@ -507,7 +521,6 @@ class FlowModel():
                 posterior = dict()
                 injection = dict()
                 x, _ = self.sample_and_logprob(conditional=validation_dataset.tensors[1][cnt], num=num_samples)
-                print(np.shape(x))
                 for i, key in enumerate(parameter_labels):
                     posterior[key] = x[:,indices[i]]
                     injection[key] = truths[indices[i]][cnt,:].flatten()
@@ -518,6 +531,37 @@ class FlowModel():
         _, pvals, combined_pvals = make_pp_plot(posteriors, injections, filename=os.path.join(self.save_location, filename), labels=parameter_labels)
         print("Made p-p plot...")
         return pvals, combined_pvals
+
+    def saliency(self, conditional, delta=0.1, num=1000, bandwidth=1):
+        if conditional.ndim == 1:
+            num_sections = int(np.shape(conditional)[0]/bandwidth)
+        else:
+            num_sections = int(np.shape(conditional)[1]/bandwidth)
+        with torch.no_grad():
+            conditional = torch.from_numpy(conditional).to(self.device)
+            if conditional.dim() == 1:
+                conditional = torch.unsqueeze(conditional, dim=0)
+            conditional = torch.repeat_interleave(conditional, num, axis=0)
+            base_distribution = StandardNormal([self.hyperparameters['n_inputs']])
+            latent_samples = base_distribution.sample(num).to(self.device)
+            q0, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
+            q0 = q0.cpu().numpy()
+            saliency = []
+            for i in range(num_sections):
+                conditional_new = np.zeros(conditional.shape[1])
+                conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*delta # the elements poking over are ignored
+                conditional_new = torch.from_numpy(conditional_new).to(self.device)
+                conditional_new = torch.unsqueeze(conditional_new, dim=0)
+                conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
+                conditional_new = conditional_new + conditional
+                q, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
+                q = q.cpu().numpy()
+                sal = np.sqrt((q0-q)**2)/delta
+                sal = np.mean(sal, axis=0)
+                saliency.append(sal)
+        saliency = np.array(saliency)
+        return saliency
+
 
     # --------------------------- Dataset ---------------------------------------
     def make_tensor_dataset(self, data, conditional, device=torch.device('cuda'), scale=True):
