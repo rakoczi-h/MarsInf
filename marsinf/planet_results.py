@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from .utils import power_spectrum
+from .utils import degree_variance
 from .dataset import PlanetDataSet
 from .results import FlowResults
 import os
@@ -39,7 +39,7 @@ class PlanetFlowResults(FlowResults):
         print(np.shape(samples))
         return samples
 
-    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False):
+    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False, conditional_format=None):
 
 
         if enforce_prior_bounds:
@@ -58,13 +58,16 @@ class PlanetFlowResults(FlowResults):
         powerspectra = []
         for g in results_dict['gravity']:
             coeffs = np.c_[sh_degrees, g]
-            ps, sh = power_spectrum(coeffs)
+            ps, sh = degree_variance(coeffs)
             idx_min = np.array(np.argwhere(sh<2))
-            ps = np.delete(ps, idx_min, 0)
-            sh = np.delete(sh, idx_min, 0)
+            ps = np.delete(ps.flatten(), idx_min, 0)
+            sh = np.delete(sh.flatten(), idx_min, 0)
             powerspectra.append(ps)
 
-        true_spectrum, sh = power_spectrum(np.c_[sh_degrees[3:,:], np.expand_dims(self.conditional[0], axis=1), np.expand_dims(self.conditional[1], axis=1)])
+        if conditional_format == 'degree_variance':
+            true_spectrum = self.conditional[0]
+        else:
+            true_spectrum, sh = degree_variance(np.c_[sh_degrees[3:,:], np.expand_dims(self.conditional[0], axis=1), np.expand_dims(self.conditional[1], axis=1)])
         idx_min = np.array(np.argwhere(sh<2))
         true_spectrum = np.delete(true_spectrum, idx_min, 0)
         sh = np.delete(sh, idx_min, 0)
