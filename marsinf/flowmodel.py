@@ -8,7 +8,8 @@ import os
 import json
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-import matplotlib
+import matplotlib as mpl
+from matplotlib import cm
 import pandas as pd
 import pickle as pkl
 from glasflow.nflows.distributions import StandardNormal
@@ -202,11 +203,11 @@ class FlowModel():
                 self.loss['train'].append(train_loss)
             val_loss = self.validation_iter(validation_loader)
             self.loss['val'].append(val_loss)
-            if scheduler is not None:
-                if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    scheduler.step(self.loss['val'][-1])
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(self.loss['val'][-1])
                 else:
-                    scheduler.step()
+                    self.scheduler.step()
             # Plotting the loss
             if not i % loss_plot_freq:
                 self.plot_loss()
@@ -422,7 +423,7 @@ class FlowModel():
         ax = axs['E']
         ax.set_box_aspect(1)
         sigma = np.abs(np.corrcoef(latent.samples.T))
-        im = ax.imshow(sigma, norm=matplotlib.colors.LogNorm())
+        im = ax.imshow(sigma, norm=mpl.colors.LogNorm())
         ax.set_title('LS Correlation', fontdict={'fontsize': 10})
         cbar_ax = fig.add_axes([0.8, 0.1, 0.02, 0.2]) # left, bottom, width, height
         fig.colorbar(im, cax=cbar_ax, label='corr coeff')
@@ -531,7 +532,7 @@ class FlowModel():
         print("Made p-p plot...")
         return pvals, combined_pvals
 
-    def saliency(self, conditionals, delta=0.1, num=1000, bandwidth=1, filename='saliency.png', parameter_labels=None):
+    def saliency(self, conditionals, delta=0.1, num=1000, bandwidth=1, filename='saliency.png', parameter_labels=None, device=torch.device('cuda')):
         """
         Performs a saliency test with a self-defined parameter importance metric.
         Parameters
@@ -571,19 +572,20 @@ class FlowModel():
 
         with torch.no_grad():
             saliency_deltas = []
-            for d in delta:
+            for dj, d in enumerate(delta):
                 saliency_conditionals = []
-                for c in conditionals:
+                for j, c in enumerate(conditionals):
                     # defining the conditional
-                    conditional = torch.from_numpy(c).to(self.device)
+                    conditional = torch.from_numpy(c).to(device)
                     if conditional.dim() == 1:
                         conditional = torch.unsqueeze(conditional, dim=0)
                     conditional = torch.repeat_interleave(conditional, num, axis=0)
                     # defining the base distribution and sampling it
                     base_distribution = StandardNormal([self.hyperparameters['n_inputs']])
-                    latent_samples = base_distribution.sample(num).to(self.device)
+                    latent_samples = base_distribution.sample(num).to(device)
                     # getting the corresponding samples from the data space
-                    q0, lq0 = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float))
+                    q0, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional.to(dtype=torch.float)) # this gives log|J|, not logprob
+                    lq0 = self.flowmodel.log_prob(q0, conditional=conditional.to(dtype=torch.float)) # calling log prob too
                     q0 = q0.cpu().numpy()
                     lq0 = lq0.cpu().numpy()
                     q0 = np.c_[q0, lq0[...,np.newaxis]] # joining the samples and the log probabilities into one array
@@ -592,19 +594,22 @@ class FlowModel():
                     for i in range(num_sections):
                         conditional_new = np.zeros(conditional.shape[1])
                         # defining the new conditional
-                        conditional_new[i*bandwidth:(i+1)*bandwidth] = np.ones(bandwidth)*d
+                        conditional_new[i*bandwidth:((i+1)*bandwidth)] = np.ones(bandwidth)*d
                         # the elements extending beyond the range of num_sections*bandwidth are ignored
-                        conditional_new = torch.from_numpy(conditional_new).to(self.device)
+                        conditional_new = torch.from_numpy(conditional_new).to(device)
                         conditional_new = torch.unsqueeze(conditional_new, dim=0)
                         conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
                         conditional_new = conditional_new + conditional
+                        #if j == 0:
+                        #    plt.plot(conditional_new[0,:].cpu().numpy())
                         # getting the corresponding samples, for the same latent locations as before
-                        q, lq = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
+                        q, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
+                        lq = self.flowmodel.log_prob(torch.from_numpy(q0[:,:-1]).to(device), conditional=conditional_new.to(dtype=torch.float)) # calling the log prob on the original samples
                         q = q.cpu().numpy()
                         lq = lq.cpu().numpy()
                         q = np.c_[q, lq[..., np.newaxis]]
                         # defining the saliency metric
-                        sal = np.sqrt((q0-q)**2)/d
+                        sal = np.sqrt((q0-q)**2)
                         sal = np.mean(sal, axis=0)
                         saliency.append(sal)
                     saliency = np.array(saliency)
@@ -613,18 +618,35 @@ class FlowModel():
                 saliency = np.array(saliency_conditionals)
                 saliency = np.mean(saliency, axis=0) # taking the mean across all the conditionals
                 saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0)) # normalising to the range of 0 to 1
+                saliency[np.isnan(saliency)] = 0.0
                 saliency_deltas.append(saliency)
+        saliency_deltas_arr = np.array(saliency_deltas)
+        #n_lines = len(delta)
+        #cmap = mpl.colormaps['plasma']
 
-        plt.figure(figsize=(10,15))
-        for j in range(np.shape(saliency)[1]):
-            plt.subplot(np.shape(saliency)[1], 1, j+1)
-            for i, sd in enumerate(saliency_deltas):
-                plt.plot(sd[:,j], label=r'$\Delta x=$'+f"{delta[i]}")
-            plt.legend()
-            plt.title(parameter_labels[j])
-            plt.ylabel('Normalised importance')
-            plt.xlabel('SH degree')
-        plt.tight_layout()
+        ## Take colors at regular intervals spanning the colormap.
+        #colors = cmap(np.linspace(0, 1, n_lines))
+        #norm = mpl.colors.LogNorm(vmin=delta[0], vmax=delta[1])
+
+        #fig, ax = plt.subplots(4, 1, figsize=(10,15))
+        #for j in range(np.shape(saliency)[1]):
+        #    for i, sd in enumerate(saliency_deltas):
+        #        ax[j].plot(sd[:,j], color=colors[i], alpha=0.6)
+        #    plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax[j], label=r'$\Delta x$')
+        #    ax[j].set_title(parameter_labels[j])
+        #    ax[j].set_ylabel('Normalised importance')
+        #    ax[j].set_xlabel('SH degree')
+        #plt.savefig(os.path.join(self.save_location, filename))
+        #plt.close()
+
+        cmap = mpl.colormaps['plasma']
+        norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
+        fig, ax = plt.subplots(4, 1, figsize=(10,15))
+        for j in range(np.shape(saliency_deltas_arr)[2]):
+            ax[j].imshow(saliency_deltas_arr[:,:,j], norm=norm, cmap=cmap)
+            ax[j].set_yticks(np.arange(0, len(delta), 2), labels=[delta[d] for d in np.arange(0, len(delta), 2)])
+            ax[j].set_title(parameter_labels[j])
+            plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax[j], label='Normalised importance')
         plt.savefig(os.path.join(self.save_location, filename))
         plt.close()
         return saliency
