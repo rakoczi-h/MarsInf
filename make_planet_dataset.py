@@ -11,9 +11,9 @@ from marsinf.prior import Prior
 from marsinf.dataset import PlanetDataSet
 from marsinf.utils import great_circle_distance, matern_covariance, multivariate, make_long_lat, sections_mean
 
-#n = int(sys.argv[1])
+n = int(sys.argv[1])
 
-saveloc = '/scratch/balta0/2263373r/mars/constant_mantle_simulated_topo_smaller_prior/'
+saveloc = '/scratch/balta0/2263373r/mars/constant_mantle_simulated_topo_v3/'
 
 if not os.path.exists(saveloc):
     os.mkdir(saveloc)
@@ -132,10 +132,10 @@ topography = None
 #    pkl.dump(dt_train, file)
 #print(f"Data set of size {size} made and saved as {file_name}.")
 
-# Make validation data
-size = 1
-dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
+## Make validation data
+#size = 1
+#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+#dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
 #dt_train.make_dataset(slim_output=False)
 #file_name = os.path.join(saveloc, f"validationset_{n}.pkl")
 #with open(file_name, 'wb') as file:
@@ -167,21 +167,21 @@ dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
 
 
 # ---------------- MAKING DATASET WITH PRESET PARAMETERS ----------------------
-#size=15
-#dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
-#parameters_dict = dict.fromkeys(priors.keys)
-#parameters_dict['e_c'] = np.array([1.0, 3.0, 5.0, 10.0, 20.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0])
-#parameters_dict['k_c'] = np.array([0.6, 0.6, 0.6, 0.6, 0.6, 0.1, 0.3, 0.6, 0.9, 1.2, 0.6, 0.6, 0.6, 0.6, 0.6])
-#parameters_dict['v_c'] = np.array([100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 10.0, 50.0, 100.0, 200.0, 500.0])
-#parameters_dict['e_m'] = 10.0*np.ones(size)
-#parameters_dict['k_m'] = 0.6*np.ones(size)
-#parameters_dict['v_m'] = 100.0*np.ones(size)
-#dt_train = dt_train.make_dataset(slim_output=True, repeats=1, parameters_dict=parameters_dict)
-#file_name = os.path.join(saveloc, f"testset_preset_{n}.pkl")
-#start_save = datetime.now()
-#with open(file_name, 'wb') as file:
-#    pkl.dump(dt_train, file)
-#print(f"Data set of size {size} made and saved as {file_name}.")
+size=1000
+dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+parameters_dict = dict.fromkeys(priors.keys)
+parameters_dict['e_c'] = 10.0*np.ones(size)
+parameters_dict['k_c'] = 0.6*np.ones(size)
+parameters_dict['v_c'] = 10.0*np.ones(size)
+parameters_dict['e_m'] = 10.0*np.ones(size)
+parameters_dict['k_m'] = 0.6*np.ones(size)
+parameters_dict['v_m'] = 100.0*np.ones(size)
+dt_train = dt_train.make_dataset(slim_output=True, repeats=1, parameters_dict=parameters_dict)
+file_name = os.path.join(saveloc, f"testset_preset_low_sigma_{n}.pkl")
+start_save = datetime.now()
+with open(file_name, 'wb') as file:
+    pkl.dump(dt_train, file)
+print(f"Data set of size {size} made and saved as {file_name}.")
 
 #size=10
 #dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
