@@ -13,6 +13,7 @@ from matplotlib import cm
 import pandas as pd
 import pickle as pkl
 from glasflow.nflows.distributions import StandardNormal
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from .latent import FlowLatent
 from .plot import make_pp_plot
@@ -85,8 +86,7 @@ class FlowModel():
         """
         Turns the flowmodel parameters into json file. The hyperparameters and the data size are incldued.
         """
-        data = {"hyperparameters": self.hyperparameters,
-                "datasize": self.datasize}
+        data = self.hyperparameters | {"datasize": self.datasize}
         with open(os.path.join(self.save_location, 'flow_info.json'), 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -532,7 +532,7 @@ class FlowModel():
         print("Made p-p plot...")
         return pvals, combined_pvals
 
-    def saliency(self, conditionals, delta=0.1, num=1000, bandwidth=1, filename='saliency.png', parameter_labels=None, device=torch.device('cuda')):
+    def saliency(self, conditionals, delta=0.1, num=1000, bandwidth=1, filename='saliency.png', parameter_labels=None, device=torch.device('cuda'), include_logprob=False, min_degree=2):
         """
         Performs a saliency test with a self-defined parameter importance metric.
         Parameters
@@ -553,7 +553,8 @@ class FlowModel():
         # Making simulated parameter labels if none are given
         if parameter_labels == None:
             parameter_labels = [f"q{x}" for x in range(num_params)]
-        parameter_labels.append('Log probability')
+        if include_logprob:
+            parameter_labels.append('Log probability')
 
         # Checking the type for the conditional.
         if isinstance(conditionals, np.ndarray):
@@ -573,19 +574,6 @@ class FlowModel():
         with torch.no_grad():
             saliency_deltas = []
             for dj, d in enumerate(delta):
-                new_conditionals = []
-                for i in range(num_sections):
-                    conditional_new = np.zeros(conditionals[0,:].shape[1])
-                    # defining the new conditional
-                    conditional_new[i*bandwidth:((i+1)*bandwidth)] = np.ones(bandwidth)*d
-                    # the elements extending beyond the range of num_sections*bandwidth are ignored
-                    conditional_new = torch.from_numpy(conditional_new).to(device)
-                    conditional_new = torch.unsqueeze(conditional_new, dim=0)
-                    conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
-                    conditional_new = conditional_new + conditional
-                    new_conditionals.append(conditional_new)
-                new_conditionals = np.array(new_conditionals)
-                print(np.shape(new_conditionals))
                 saliency_conditionals = []
                 for j, c in enumerate(conditionals):
                     # defining the conditional
@@ -601,7 +589,8 @@ class FlowModel():
                     lq0 = self.flowmodel.log_prob(q0, conditional=conditional.to(dtype=torch.float)) # calling log prob too
                     q0 = q0.cpu().numpy()
                     lq0 = lq0.cpu().numpy()
-                    q0 = np.c_[q0, lq0[...,np.newaxis]] # joining the samples and the log probabilities into one array
+                    if include_logprob:
+                        q0 = np.c_[q0, lq0[...,np.newaxis]] # joining the samples and the log probabilities into one array
 
                     saliency = []
                     for i in range(num_sections):
@@ -617,12 +606,13 @@ class FlowModel():
                         #    plt.plot(conditional_new[0,:].cpu().numpy())
                         # getting the corresponding samples, for the same latent locations as before
                         q, _ = self.flowmodel.inverse(latent_samples.to(dtype=torch.float), conditional=conditional_new.to(dtype=torch.float))
-                        lq = self.flowmodel.log_prob(torch.from_numpy(q0[:,:-1]).to(device), conditional=conditional_new.to(dtype=torch.float)) # calling the log prob on the original samples
                         q = q.cpu().numpy()
-                        lq = lq.cpu().numpy()
-                        q = np.c_[q, lq[..., np.newaxis]]
+                        if include_logprob:
+                            lq = self.flowmodel.log_prob(torch.from_numpy(q0[:,:-1]).to(device), conditional=conditional_new.to(dtype=torch.float)) # calling the log prob on the original samples
+                            lq = lq.cpu().numpy()
+                            q = np.c_[q, lq[..., np.newaxis]]
                         # defining the saliency metric
-                        sal = np.sqrt((q0-q)**2)
+                        sal = np.sqrt((q0-q)**2)/2
                         sal = np.mean(sal, axis=0)
                         saliency.append(sal)
                     saliency = np.array(saliency)
@@ -634,32 +624,30 @@ class FlowModel():
                 saliency[np.isnan(saliency)] = 0.0
                 saliency_deltas.append(saliency)
         saliency_deltas_arr = np.array(saliency_deltas)
-        #n_lines = len(delta)
-        #cmap = mpl.colormaps['plasma']
 
-        ## Take colors at regular intervals spanning the colormap.
-        #colors = cmap(np.linspace(0, 1, n_lines))
-        #norm = mpl.colors.LogNorm(vmin=delta[0], vmax=delta[1])
-
-        #fig, ax = plt.subplots(4, 1, figsize=(10,15))
-        #for j in range(np.shape(saliency)[1]):
-        #    for i, sd in enumerate(saliency_deltas):
-        #        ax[j].plot(sd[:,j], color=colors[i], alpha=0.6)
-        #    plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax[j], label=r'$\Delta x$')
-        #    ax[j].set_title(parameter_labels[j])
-        #    ax[j].set_ylabel('Normalised importance')
-        #    ax[j].set_xlabel('SH degree')
-        #plt.savefig(os.path.join(self.save_location, filename))
-        #plt.close()
-
+        num_subplots = np.shape(saliency_deltas_arr)[2]
         cmap = mpl.colormaps['plasma']
-        norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
-        fig, ax = plt.subplots(4, 1, figsize=(10,15))
-        for j in range(np.shape(saliency_deltas_arr)[2]):
+        #norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
+        norm = mpl.colors.Normalize(vmin=np.min(saliency_deltas_arr), vmax=np.max(saliency_deltas_arr))
+        fig, ax = plt.subplots(num_subplots, 1, figsize=(10,num_subplots*4), gridspec_kw={'hspace': 0.1})
+        for j in range(num_subplots):
+            if not (j == num_subplots-1):
+                ax[j].set_xticks(ticks=[])
+            else:
+                ax[j].set_xlabel('SH Degree', fontdict={'fontsize': 14})
+                ax[j].set_xticks(np.arange(0, np.shape(saliency_deltas_arr)[1], 5), labels=np.arange(0, np.shape(saliency_deltas_arr)[1], 5)+min_degree)
             ax[j].imshow(saliency_deltas_arr[:,:,j], norm=norm, cmap=cmap)
-            ax[j].set_yticks(np.arange(0, len(delta), 2), labels=[delta[d] for d in np.arange(0, len(delta), 2)])
-            ax[j].set_title(parameter_labels[j])
-            plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax[j], label='Normalised importance')
+            ax[j].set_yticks(np.arange(0, len(delta), 2), labels=[f"{delta[d]:.0e}" for d in np.arange(0, len(delta), 2)])
+            ax[j].set_ylabel(r'$\Delta$d', fontdict={'fontsize': 14})
+            ax[j].set_title(parameter_labels[j], fontdict={'fontsize': 14})
+        axpos = ax[j].get_position()
+        pos_x = axpos.x0
+        pos_y = axpos.y0 - 0.07
+        cax_width = axpos.width
+        cax_height = 0.02
+        cax = fig.add_axes([pos_x, pos_y, cax_width, cax_height])
+        cb = plt.colorbar(cm.ScalarMappable(norm=norm, cmap=cmap), cax=cax, orientation='horizontal', label='Normalised importance')
+        cb.set_label(label='Normalised importance', fontsize=14)
         plt.savefig(os.path.join(self.save_location, filename))
         plt.close()
         return saliency
