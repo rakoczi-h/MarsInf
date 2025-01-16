@@ -135,8 +135,8 @@ class FlowResults:
                 labels = self.parameter_labels
         CORNER_KWARGS = dict(smooth=0.9,
                             show_titles=True,
-                            label_kwargs=dict(fontsize=20),
-                            title_kwargs=dict(fontsize=20),
+                            label_kwargs=dict(fontsize=16),
+                            title_kwargs=dict(fontsize=16),
                             quantiles=[0.16, 0.5, 0.84],
                             levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
                             plot_density=False,

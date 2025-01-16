@@ -573,6 +573,19 @@ class FlowModel():
         with torch.no_grad():
             saliency_deltas = []
             for dj, d in enumerate(delta):
+                new_conditionals = []
+                for i in range(num_sections):
+                    conditional_new = np.zeros(conditionals[0,:].shape[1])
+                    # defining the new conditional
+                    conditional_new[i*bandwidth:((i+1)*bandwidth)] = np.ones(bandwidth)*d
+                    # the elements extending beyond the range of num_sections*bandwidth are ignored
+                    conditional_new = torch.from_numpy(conditional_new).to(device)
+                    conditional_new = torch.unsqueeze(conditional_new, dim=0)
+                    conditional_new = torch.repeat_interleave(conditional_new, num, axis=0)
+                    conditional_new = conditional_new + conditional
+                    new_conditionals.append(conditional_new)
+                new_conditionals = np.array(new_conditionals)
+                print(np.shape(new_conditionals))
                 saliency_conditionals = []
                 for j, c in enumerate(conditionals):
                     # defining the conditional
