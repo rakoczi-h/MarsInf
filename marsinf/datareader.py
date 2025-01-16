@@ -6,7 +6,7 @@ import random
 from .utils import degree_variance
 
 class DataReader():
-    def __init__(self, file_names, data_location, model_parameters_to_include, conditional_format='coeffs', noise=None, chunk_size=None):
+    def __init__(self, file_names, data_location, model_parameters_to_include, conditional_format='coeffs', noise=None, chunk_size=None, datasize=None):
         self.file_names = file_names
         self.n_files = int(len(file_names))
         self.data_location = data_location
@@ -14,6 +14,7 @@ class DataReader():
         self.model_parameters_to_include = model_parameters_to_include
         self.noise = noise
         self.conditional_format = conditional_format
+        self.datasize = datasize
 
     def split_filenames(self, chunk_size=None, randomise=False):
         if chunk_size is not None:
@@ -35,7 +36,7 @@ class DataReader():
             filenames = [filenames[(n*self.chunk_size):((n+1)*self.chunk_size)] for n in range(num_sections)]
             return filenames
 
-    def read_files(self, filenames=None, noise_augment=False, noise_augment_factor=2):
+    def read_files(self, filenames=None, noise_augment=False, noise_augment_factor=2, datasize=None):
         """
         Function that read the files defined by data_location and filenames. This is specific for data files describing planets, which contain a dictionary with the parameters and the gravity of planets. Note that SH degrees below 2 will automatically be ignored.
         Parameters
@@ -62,6 +63,9 @@ class DataReader():
         for f in filenames:
             with open(os.path.join(self.data_location, f), 'rb') as file:
                 dt = pkl.load(file)
+                dt['e_m/e_c'] = dt['e_m']/dt['e_c']
+                dt['k_m/k_c'] = dt['k_m']/dt['k_c']
+                dt['v_m/v_c'] = dt['v_m']/dt['v_c']
                 td = [dt[key] for key in self.model_parameters_to_include]
                 # removing sh degrees below 2
                 degrees = dt['sh_degrees']
@@ -123,5 +127,19 @@ class DataReader():
             inp = np.concatenate((degrees_array, np.expand_dims(train_conditional[0], axis=2), np.expand_dims(train_conditional[1], axis=2)), axis=2)
             dv, _ = degree_variance(inp)
             train_conditional = [dv]
+
+        elif self.conditional_format == 'log_degree_variance':
+            inp = np.concatenate((degrees_array, np.expand_dims(train_conditional[0], axis=2), np.expand_dims(train_conditional[1], axis=2)), axis=2)
+            dv, _ = degree_variance(inp)
+            train_conditional = [np.log(dv)]
+
+        if datasize is not None:
+            for i, td in enumerate(train_data):
+                train_data[i] = train_data[i][:datasize]
+            for i, td in enumerate(train_conditional):
+                train_conditional[i] = train_conditional[i][:datasize]
+            self.datasize = datasize
+        else:
+            self.datasize = np.shape(train_data[0])[0]
 
         return train_data, train_conditional
