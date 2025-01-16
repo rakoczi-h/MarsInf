@@ -7,9 +7,11 @@ from itertools import product
 from collections import namedtuple
 import imageio
 import os
-
+import matplotlib.patheffects as pe
 plt.style.use('seaborn-v0_8-deep')
 matplotlib.rcParams['axes.titlesize'] = 10
+path_effects = [pe.Stroke(linewidth=2.0, foreground="black"), pe.Normal()]
+path_effects_2 = [pe.Stroke(linewidth=1.0, foreground="black"), pe.Normal()]
 
 def make_pp_plot(posterior_samples_list, truths, labels=None, filename=None, confidence_interval=[0.68, 0.95, 0.997],
                  lines=None, legend_fontsize='x-small', title=True,
@@ -203,6 +205,7 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
         raise ValueError('The filetype for filename has to be .png')
 
 
+    colors = ['sandybrown', 'indianred', 'cornflowerblue']
     fig, axes = plt.subplots(2,2, figsize=[10,10])
     ax = axes.flatten()
     js_divs_list = []
@@ -210,17 +213,17 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
         js_divs_list.append(js_divs[:,i])
     js_divs_all = np.hstack(js_divs_list)
     median = np.median(js_divs_all)
-    print(keys)
-    for i, jsl in enumerate(js_divs_list):
-        ax[0].hist(jsl, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='stepfilled', alpha=0.5, range=(0, 0.6), density=False, label=keys[i])
-        ax[0].hist(jsl, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='step', range=(0, 0.6), density=False, color='black')
-    ax[0].set_xscale('log')
+
+    #for i, jsl in enumerate(js_divs_list):
+    ax[0].hist(js_divs_list, bins=20, histtype='barstacked', range=(0, 0.6), density=False, label=keys, color=colors)
+    ax[0].hist(js_divs_all.flatten(), bins=20, histtype='step', range=(0, 0.6), density=False, color='black')
     ax[0].legend()
     ax[0].set_xlabel("JS Divergence", fontsize=14)
     ax[0].set_ylabel("Counts", fontsize=14)
 
     ax[1].grid(zorder=0, linestyle='--')
-    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2)
+    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2, color='black', s=25)
+    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2, color=colors[0], s=16)
     #ax[1].set_yscale('log')
     ax[1].set_ylabel("JS Divergence", fontsize=14)
     ax[1].set_xlabel(keys[0], fontsize=14)
@@ -228,13 +231,15 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
     ax[1].yaxis.tick_right()
 
     ax[2].grid(zorder=0, linestyle='--')
-    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2)
+    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2, color='black', s=25)
+    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2, color=colors[1], s=16)
     #ax[2].set_yscale('log')
     ax[2].set_ylabel("JS Divergence", fontsize=14)
     ax[2].set_xlabel(keys[1], fontsize=14)
 
     ax[3].grid(zorder=0, linestyle='--')
-    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2)
+    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2, color='black', s=25)
+    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2, color=colors[2], s=16)
     #ax[3].set_yscale('log')
     ax[3].set_ylabel("JS Divergence", fontsize=14)
     ax[3].set_xlabel(keys[2], fontsize=14)
