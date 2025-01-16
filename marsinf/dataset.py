@@ -114,7 +114,7 @@ class PlanetDataSet():
         # Simulating topography if not given
         if self.topography is None:
             print("Making topography...")
-            cm_t = matern_covariance(psi, 10.0, 0.6, 100.0)
+            cm_t = matern_covariance(psi, 1.5, 0.3, 1000.0)
             self.topography = multivariate(cm_t, 0.0*np.ones(np.shape(cm_t)[0]), seed=self.model_framework['seed_topography'])
 
         # Simulating the MOHO from self.topography
