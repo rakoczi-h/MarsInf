@@ -612,7 +612,7 @@ class FlowModel():
                             lq = lq.cpu().numpy()
                             q = np.c_[q, lq[..., np.newaxis]]
                         # defining the saliency metric
-                        sal = np.sqrt((q0-q)**2)/2
+                        sal = np.sqrt((q0-q)**2)/d
                         sal = np.mean(sal, axis=0)
                         saliency.append(sal)
                     saliency = np.array(saliency)
@@ -620,15 +620,17 @@ class FlowModel():
                     saliency_conditionals.append(saliency)
                 saliency = np.array(saliency_conditionals)
                 saliency = np.mean(saliency, axis=0) # taking the mean across all the conditionals
-                saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0)) # normalising to the range of 0 to 1
+                #saliency = (saliency-np.min(saliency, axis=0))/(np.max(saliency, axis=0)-np.min(saliency, axis=0)) # normalising to the range of 0 to 1
                 saliency[np.isnan(saliency)] = 0.0
                 saliency_deltas.append(saliency)
         saliency_deltas_arr = np.array(saliency_deltas)
-
+        saliency_deltas_arr = (saliency_deltas_arr-np.min(saliency_deltas_arr))/(np.max(saliency_deltas_arr)-np.min(saliency_deltas_arr))+1e-10
         num_subplots = np.shape(saliency_deltas_arr)[2]
         cmap = mpl.colormaps['plasma']
         #norm = mpl.colors.Normalize(vmin=0.0, vmax=1.0)
-        norm = mpl.colors.Normalize(vmin=np.min(saliency_deltas_arr), vmax=np.max(saliency_deltas_arr))
+        print(np.min(saliency_deltas_arr))
+        print(np.max(saliency_deltas_arr))
+        norm = mpl.colors.LogNorm(vmin=1e-2, vmax=1.0)
         fig, ax = plt.subplots(num_subplots, 1, figsize=(10,num_subplots*4), gridspec_kw={'hspace': 0.1})
         for j in range(num_subplots):
             if not (j == num_subplots-1):
