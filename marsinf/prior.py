@@ -38,7 +38,7 @@ class Prior():
                 super().__setattr__(key, value[key])
         super().__setattr__(name, value)
 
-    def sample(self, size, returntype='array', include_set_parameters=True):
+    def sample(self, size, returntype='array', include_set_parameters=True, parameters_to_include=None):
         """
         Parameters
         ----------
@@ -47,13 +47,20 @@ class Prior():
             returntype: str
                 can be 'array' or 'dict'
         """
+
+        if parameters_to_include is not None:
+            keys = parameter_to_include
+        else:
+            keys = self.keys
+
         if returntype == 'array':
             samples = []
         elif returntype == 'dict':
-            samples = dict.fromkeys(self.keys)
+            samples = dict.fromkeys(keys)
         else:
             raise ValueError('returntype can only be array or dict.')
-        for key in self.keys:
+
+        for key in keys:
             if isinstance(self.distributions[key], (float, int)):
                 if include_set_parameters:
                     s = np.ones(size)*self.distributions[key]
