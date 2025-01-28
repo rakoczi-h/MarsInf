@@ -6,7 +6,7 @@ import random
 from .utils import degree_variance
 
 class DataReader():
-    def __init__(self, file_names, data_location, model_parameters_to_include, conditional_format='coeffs', noise=None, chunk_size=None, datasize=None):
+    def __init__(self, file_names, data_location, model_parameters_to_include, conditional_format='coeffs', noise=None, chunk_size=None, datasize=None, min_degree=2):
         self.file_names = file_names
         self.n_files = int(len(file_names))
         self.data_location = data_location
@@ -15,6 +15,7 @@ class DataReader():
         self.noise = noise
         self.conditional_format = conditional_format
         self.datasize = datasize
+        self.min_degree= min_degree
 
     def split_filenames(self, chunk_size=None, randomise=False):
         if chunk_size is not None:
@@ -66,10 +67,13 @@ class DataReader():
                 dt['e_m/e_c'] = dt['e_m']/dt['e_c']
                 dt['k_m/k_c'] = dt['k_m']/dt['k_c']
                 dt['v_m/v_c'] = dt['v_m']/dt['v_c']
+                dt['e_m*e_c'] = dt['e_m']*dt['e_c']
+                dt['k_m*k_c'] = dt['k_m']*dt['k_c']
+                dt['v_m*v_c'] = dt['v_m']*dt['v_c']
                 td = [dt[key] for key in self.model_parameters_to_include]
                 # removing sh degrees below 2
                 degrees = dt['sh_degrees']
-                idx_min = np.array(np.argwhere(degrees[:,0]<2))
+                idx_min = np.array(np.argwhere(degrees[:,0]<self.min_degree))
                 tc = np.array(dt['gravity'])
                 tc = np.delete(tc, idx_min, 1)
                 #idx_max = np.array(np.argwhere(degrees[:,0]>20))-np.shape(idx_min)[0]
