@@ -189,10 +189,16 @@ def plot_js_hist(js_divs, keys, filename='js_hist.png'):
         js_divs_list.append(js_divs[:,i])
     js_divs_all = np.hstack(js_divs_list)
     median = np.median(js_divs_all)
+    color = ['moccasin', 'sandybrown', 'indianred', 'plum', 'mediumpurple', 'cornflowerblue', 'skyblue']
+    if len(js_divs_list) > len(color):
+        color = None
+    else:
+        color = color[:len(js_divs_list)]
     #counts, bins, _ = plt.hist(js_divs_list, bins=np.logspace(np.log10(0.0001), np.log10(0.6), 20), histtype='barstacked', range=(0, 0.6), density=False, label=keys)
-    for i, jsl in enumerate(js_divs_list):
-        counts, bins, _ = plt.hist(jsl, bins=10, histtype='step', density=False, label=keys[i])
-    #plt.xscale('log')
+    #for i, jsl in enumerate(js_divs_list):
+    #    counts, bins, _ = plt.hist(jsl, bins=10, histtype='barstacked', density=True, label=keys[i])
+    counts, bins, _ = plt.hist(js_divs_list, bins=20, histtype='barstacked', color=color, alpha=0.8, density=False, label=keys)
+    plt.hist(js_divs_all.flatten(), bins=20, histtype='step', density=False, color='black')
     plt.legend()
     plt.xlabel("JS Divergence", fontsize=14)
     plt.ylabel("Counts", fontsize=14)
@@ -215,32 +221,32 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
     median = np.median(js_divs_all)
 
     #for i, jsl in enumerate(js_divs_list):
-    ax[0].hist(js_divs_list, bins=20, histtype='barstacked', range=(0, 0.6), density=False, label=keys, color=colors)
-    ax[0].hist(js_divs_all.flatten(), bins=20, histtype='step', range=(0, 0.6), density=False, color='black')
+    ax[0].hist(js_divs_list, bins=20, alpha=0.8, histtype='barstacked', density=False, label=keys, color=colors)
+    ax[0].hist(js_divs_all.flatten(), bins=20, histtype='step', density=False, color='black')
     ax[0].legend()
     ax[0].set_xlabel("JS Divergence", fontsize=14)
     ax[0].set_ylabel("Counts", fontsize=14)
 
     ax[1].grid(zorder=0, linestyle='--')
-    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2, color='black', s=25)
-    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2, color=colors[0], s=16)
+    ax[1].scatter(parameters[:,0], js_divs[:,0], zorder=2, alpha=0.8, color=colors[0], s=40, edgecolors='black', linewidths=0.5)
     #ax[1].set_yscale('log')
+    ax[1].set_ylim(0.0, np.log(2))
     ax[1].set_ylabel("JS Divergence", fontsize=14)
     ax[1].set_xlabel(keys[0], fontsize=14)
     ax[1].yaxis.set_label_position("right")
     ax[1].yaxis.tick_right()
 
     ax[2].grid(zorder=0, linestyle='--')
-    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2, color='black', s=25)
-    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2, color=colors[1], s=16)
+    ax[2].scatter(parameters[:,1], js_divs[:,1], zorder=2, alpha=0.8, color=colors[1], s=40, edgecolors='black', linewidths=0.5)
     #ax[2].set_yscale('log')
+    ax[2].set_ylim(0.0, np.log(2))
     ax[2].set_ylabel("JS Divergence", fontsize=14)
     ax[2].set_xlabel(keys[1], fontsize=14)
 
     ax[3].grid(zorder=0, linestyle='--')
-    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2, color='black', s=25)
-    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2, color=colors[2], s=16)
+    ax[3].scatter(parameters[:,2], js_divs[:,2], zorder=2, alpha=0.8, color=colors[2], s=40, edgecolors='black', linewidths=0.5)
     #ax[3].set_yscale('log')
+    ax[3].set_ylim(0.0, np.log(2))
     ax[3].set_ylabel("JS Divergence", fontsize=14)
     ax[3].set_xlabel(keys[2], fontsize=14)
     ax[3].yaxis.set_label_position("right")
