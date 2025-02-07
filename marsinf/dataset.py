@@ -54,7 +54,7 @@ class PlanetDataSet():
             value.setdefault("type", "sh")
             value.setdefault("av_dens_c", 3050.0)
             value.setdefault("av_den_m", 3550.0)
-            value.setdefault("mass", 0.652*1e24)
+            value.setdefault("mass", 0.64171*1e24)
             value.setdefault("radius", 3.396*1e6)
             value.setdefault("flex_model", 'Thin_Shell')
             value.setdefault("moho_parameters", {'Te': 80000.0, 'D_c': 60000.0, 'E': 100.0*1e9, 'v': 0.25})
