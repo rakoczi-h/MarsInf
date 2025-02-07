@@ -145,5 +145,6 @@ class DataReader():
             self.datasize = datasize
         else:
             self.datasize = np.shape(train_data[0])[0]
+        print(self.datasize)
 
         return train_data, train_conditional
