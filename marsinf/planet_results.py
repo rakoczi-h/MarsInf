@@ -36,7 +36,7 @@ class PlanetFlowResults(FlowResults):
             samples = np.delete(samples, idx, axis=0)
         return samples
 
-    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False, conditional_format=None):
+    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False, conditional_format=None, min_degree=2, topography=None):
         if enforce_prior_bounds:
             samples = self.enforce_priors()
         else:
@@ -46,7 +46,7 @@ class PlanetFlowResults(FlowResults):
         for i, key in enumerate(self.parameter_labels):
             parameters_dict[key] = samples[:,i]
 
-        results_dataset = PlanetDataSet(priors=self.priors, size=np.shape(samples)[0], model_framework=self.model_framework, survey_framework=self.survey_framework)
+        results_dataset = PlanetDataSet(priors=self.priors, size=np.shape(samples)[0], model_framework=self.model_framework, survey_framework=self.survey_framework, topography=topography)
 
         results_dict = results_dataset.make_dataset(parameters_dict=parameters_dict, slim_output=True, repeats=1)
         sh_degrees = results_dict['sh_degrees']
@@ -54,7 +54,7 @@ class PlanetFlowResults(FlowResults):
         for g in results_dict['gravity']:
             coeffs = np.c_[sh_degrees, g]
             ps, sh = degree_variance(coeffs)
-            idx_min = np.array(np.argwhere(sh<2))
+            idx_min = np.array(np.argwhere(sh<min_degree))
             ps = np.delete(ps.flatten(), idx_min, 0)
             sh = np.delete(sh.flatten(), idx_min, 0)
             powerspectra.append(ps)
@@ -63,7 +63,7 @@ class PlanetFlowResults(FlowResults):
             true_spectrum = self.conditional[0]
         else:
             true_spectrum, sh = degree_variance(np.c_[sh_degrees[3:,:], np.expand_dims(self.conditional[0], axis=1), np.expand_dims(self.conditional[1], axis=1)])
-        idx_min = np.array(np.argwhere(sh<2))
+        idx_min = np.array(np.argwhere(sh<min_degree))
         true_spectrum = np.delete(true_spectrum, idx_min, 0)
         sh = np.delete(sh, idx_min, 0)
 
@@ -71,19 +71,33 @@ class PlanetFlowResults(FlowResults):
         min_spectrum = np.min(powerspectra, axis=0)
         max_spectrum = np.max(powerspectra, axis=0)
         mean_spectrum = np.mean(powerspectra, axis=0)
+        median_spectrum = np.median(powerspectra, axis=0)
         std_spectrum = np.std(powerspectra, axis=0)
-        plt.grid(zorder=0, linestyle='--')
-        if original_range is not None:
-            plt.fill_between(sh, original_range['min'][1:], original_range['max'][1:], label='Data Set Range', color='gray', alpha=0.3, zorder=1)
-        plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.7, zorder=2)
-        plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='Sample SD', color='mediumpurple', alpha=0.7, zorder=3)
 
-        plt.plot(sh, mean_spectrum, zorder=6, color='cornflowerblue', linewidth=1.25)
-        plt.plot(sh, true_spectrum, zorder=5, color='firebrick')
-        plt.scatter(sh, mean_spectrum, label='Mean', zorder=6, color='cornflowerblue', path_effects=path_effects, s=18)
-        plt.scatter(sh, true_spectrum, label='Truth', zorder=5, color='firebrick', path_effects=path_effects, s=18)
+        plt.grid(zorder=-1, linestyle='--', axis='x')
+        #if original_range is not None:
+            #plt.fill_between(sh, original_min, original_max, label='Data Set Range', color='gray', alpha=0.3, zorder=1)
+        #plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.7, zorder=2)
+        if original_range is not None:
+            for i in range(20):
+                if i == 0:
+                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', label='Prior Samples', linewidth=1.25, linestyle='--')
+                else:
+                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', linewidth=1.25, linestyle='--')
+        for i in range(10):
+            if i == 0:
+                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', label='Posterior Samples', linewidth=1.25, linestyle='--')
+            else:
+                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', linewidth=1.25, linestyle='--')
+        plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='SD', color='mediumpurple', alpha=0.7, zorder=3)
+        plt.plot(sh, median_spectrum, zorder=4, color='mediumpurple', linewidth=1.25)
+        plt.plot(sh, mean_spectrum, zorder=5, color='cornflowerblue', linewidth=1.25)
+        plt.plot(sh, true_spectrum, zorder=6, color='firebrick')
+        #plt.scatter(sh, median_spectrum, label='Median', zorder=4, color='mediumpurple', path_effects=path_effects, s=18)
+        plt.scatter(sh, mean_spectrum, label='Mean', zorder=5, color='cornflowerblue', path_effects=path_effects, s=18)
+        plt.scatter(sh, true_spectrum, label='Truth', zorder=6, color='firebrick', path_effects=path_effects, s=18)
         plt.legend()
-        plt.xlim(left=2.0, right=44.0)
+        plt.xlim(left=min_degree, right=np.shape(sh)[0]+min_degree-1)
         min_lim = np.min([np.min(min_spectrum), np.min(true_spectrum)])
         max_lim = np.max([np.max(max_spectrum), np.max(true_spectrum)])
         plt.ylim(min_lim, max_lim)
