@@ -70,8 +70,21 @@ class FlowResults:
                 value = value.cpu().numpy()
         super().__setattr__(name, value)
 
+    def get_statistics_samples(self):
+        stats = dict.fromkeys(['mode', 'q16', 'q50', 'q84'])
+        idx = np.argwhere(self.log_probabilities == np.max(self.log_probabilities))
+        idx = idx[0]
+        stats['mode'] = self.samples[idx, :][0]
+        sorted_idx = np.argsort(self.log_probabilities)
+        q16 = int(self.nsamples*0.16)
+        stats['q16'] = self.samples[q16,:]
+        q50 = int(self.nsamples*0.5)
+        stats['q50'] = self.samples[q50,:]
+        q84 = int(self.nsamples*0.84)
+        stats['q84'] = self.samples[q84,:]
+        return stats
 
-    def get_js_divergence(self, samples_to_compare, n=500):
+    def get_js_divergence(self, samples_to_compare, n=500, keep_wrong=True):
         """Function calculating the Jensen-Shannon divergence between the distribution of the samples of this class and another set of samples.
         The p(x) and q(x) functions are calculated using a KDE of the input samples.
         This is done for each dimension seperately.
@@ -87,10 +100,7 @@ class FlowResults:
                 The list of JS-divergence values with length of the no. of parameters/dimensions.
         """
         if self.samples is None:
-            if scaler is not None:
-                self.inverse_scale('samples', scaler)
-            else:
-                raise AttributeError("Samples have not been unnormalised and scaler was not provided.")
+            raise AttributeError("Samples were not provided.")
         if not self.nparameters == np.shape(samples_to_compare)[1]:
             raise ValueError('The two sample sets do not have the same number of parameters.')
         js = []
@@ -103,10 +113,31 @@ class FlowResults:
             p_x = p.evaluate(x_grid)
             q = scipy.stats.gaussian_kde(samples_to_compare[:,i])
             q_x = q.evaluate(x_grid)
-            js_pq = np.nan_to_num(np.power(jensenshannon(p_x, q_x), 2))
+            js_pq = np.nan_to_num(np.power(jensenshannon(p_x, q_x), 2)) # jensenshannon gives the distance, need to square to get the divergence
+            if js_pq > np.log(2):
+                if keep_wrong:
+                    js_pq = np.log(2)
+                else:
+                    print(f"Found wrong js values: {js_pq}")
+                    return None
             js.append(js_pq)
         js = np.array(js)
         return js
+
+    def get_volume_reduction(self, prior_logprobs, bounds=[0.16, 0.5, 0.84]):
+        if self.samples is None:
+            raise AttributeError("Samples were not provided as a class attribute.")
+        if self.log_probabilities is None:
+            raise AttributeError("Logprobabilities were not provided as a class attribute.")
+        # Sort samples by logprob and find the value at the 90%
+        sorted_logs = np.sort(self.log_probabilities)
+        volume_reductions = []
+        for b in bounds:
+            num_bound = int(self.nsamples*b) # 90%
+            log_bound = sorted_logs[num_bound]
+            prior_bound_idx = np.argwhere(prior_logprobs > log_bound)
+            volume_reductions.append(len(prior_bound_idx)/np.shape(prior_logprobs)[0])
+        return volume_reductions
 
 
     def corner_plot(self, filename='corner.png', prior_bounds=None, labels=None):
