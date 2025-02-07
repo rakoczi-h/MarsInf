@@ -54,7 +54,7 @@ class Planet():
         seed: bool
             If true, seed number 4 is used.
     """
-    def __init__(self, radius=3.396*1e6, mass=0.64171*1e24, crust=None, mantle=None, parameters=None, lat=None, long=None, psi=None, seed=False, resolution=None, topography=None, Te=80000.0, D_c=60000.0, E=1e11, v=0.25):
+    def __init__(self, radius=3.396*1e6, mass=0.64171*1e24, crust=None, mantle=None, parameters=None, lat=None, long=None, psi=None, seed=False, resolution=None, topography=None, Te=80000.0, D_c=60000.0, D_m=100000.0, E=1e11, v=0.25):
         self.radius = radius
         self.mass = mass
         self.crust = crust
@@ -67,6 +67,7 @@ class Planet():
         self.psi = psi
         self.Te = Te #80-100 for Mars
         self.D_c = D_c #60+-10 for Mars
+        self.D_m = D_m
         self.E = E
         self.v = v
         self.parameter_labels = None
@@ -109,7 +110,6 @@ class Planet():
             verbose: bool
                 If true, more updates are printed along with timings.
         """
-        # Checking whether seeding or not
         seed = None
 
         if self.psi is None:
@@ -253,7 +253,7 @@ class Planet():
                                 'dens': np.reshape(self.crust.dens_model, self.shape)},
                         'l2': {'bound': np.reshape(self.mantle.topo_model, self.shape),
                                 'dens': np.reshape(self.mantle.dens_model, self.shape)},
-                        'l3': {'bound': np.zeros(self.shape)}}
+                        'l3': {'bound': -np.ones(self.shape)*self.D_m}}
 
         octave = Oct2Py()
         dir_path = os.path.dirname(os.path.realpath(__file__))
