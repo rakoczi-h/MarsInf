@@ -53,12 +53,12 @@ class Prior():
         else:
             keys = self.keys
 
-        if returntype == 'array':
+        if returntype == 'array' or returntype == 'list':
             samples = []
         elif returntype == 'dict':
             samples = dict.fromkeys(keys)
         else:
-            raise ValueError('returntype can only be array or dict.')
+            raise ValueError('returntype can only be array, dict or list.')
 
         for key in keys:
             if isinstance(self.distributions[key], (float, int)):
@@ -80,13 +80,15 @@ class Prior():
                     raise ValueError('See documentation for right input format')
             else:
                 raise ValueError('See documentation for right input format')
-            if returntype == 'array':
-                samples.append(s)
+            if returntype == 'array' or returntype == 'list':
+                samples.append(s[...,np.newaxis])
             elif returntype == 'dict':
                 samples[key] = s
         if returntype == 'array':
             return np.array(samples).T
         elif returntype == 'dict':
+            return samples
+        elif returntype == 'list':
             return samples
 
     def plot_distributions(self, filename=None):
@@ -127,6 +129,7 @@ class Prior():
                 The mean of the js divergence values.
         """
         samples = self.sample(size=num_samples, include_set_parameters=False)
+        samples = samples[0]
         js = []
         for i, dim in enumerate(samples.T):
             xmin = min([np.min(dim), np.min(samples_to_compare[:num_samples,i])])
