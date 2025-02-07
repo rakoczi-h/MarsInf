@@ -232,7 +232,7 @@ class PlanetDataSet():
                                     'dens': np.reshape(p.crust.dens_model, p.shape)},
                             'l2': {'bound': np.reshape(p.mantle.topo_model, p.shape),
                                     'dens': np.reshape(p.mantle.dens_model, p.shape)},
-                            'l3': {'bound': np.zeros(p.shape)}}
+                            'l3': {'bound': -np.ones(p.shape)*p.D_m}}
             V = octave.model_SH_analysis(input_model, nout=1)
             if return_SH:
                 gravity = GravityMap(lat=p.lat, long=p.long,
