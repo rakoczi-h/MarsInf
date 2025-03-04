@@ -54,7 +54,7 @@ class Planet():
         seed: bool
             If true, seed number 4 is used.
     """
-    def __init__(self, radius=3.396*1e6, mass=0.64171*1e24, crust=None, mantle=None, parameters=None, lat=None, long=None, psi=None, seed=False, resolution=None, topography=None, Te=80000.0, D_c=60000.0, D_m=100000.0, E=1e11, v=0.25):
+    def __init__(self, radius=3.396*1e6, mass=0.64171*1e24, crust=None, mantle=None, parameters=None, lat=None, long=None, psi=None, seed=False, resolution=None, topography=None, Te=80000.0, D_c=60000.0, D_m=150000.0, E=1e11, v=0.25):
         self.radius = radius
         self.mass = mass
         self.crust = crust
