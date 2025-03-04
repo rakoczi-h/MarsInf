@@ -68,34 +68,40 @@ class PlanetFlowResults(FlowResults):
         sh = np.delete(sh, idx_min, 0)
 
         powerspectra = np.vstack(powerspectra)
+        top_percentile = int(0.84*np.shape(powerspectra)[0])
+        bottom_percentile = int(0.16*np.shape(powerspectra)[0])
+        tops = []
+        bottoms = []
+        for i in range(np.shape(powerspectra)[1]):
+            sorted_arr = np.sort(powerspectra[:,i])
+            tops.append(sorted_arr[top_percentile])
+            bottoms.append(sorted_arr[bottom_percentile])
+        powerspectra_tops = np.array(tops)
+        powerspectra_bottoms = np.array(bottoms)
+        median_spectrum = np.median(powerspectra, axis=0)
         min_spectrum = np.min(powerspectra, axis=0)
         max_spectrum = np.max(powerspectra, axis=0)
-        mean_spectrum = np.mean(powerspectra, axis=0)
-        median_spectrum = np.median(powerspectra, axis=0)
-        std_spectrum = np.std(powerspectra, axis=0)
 
         plt.grid(zorder=-1, linestyle='--', axis='x')
         #if original_range is not None:
             #plt.fill_between(sh, original_min, original_max, label='Data Set Range', color='gray', alpha=0.3, zorder=1)
         #plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.7, zorder=2)
         if original_range is not None:
-            for i in range(20):
-                if i == 0:
-                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', label='Prior Samples', linewidth=1.25, linestyle='--')
-                else:
-                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', linewidth=1.25, linestyle='--')
-        for i in range(10):
-            if i == 0:
-                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', label='Posterior Samples', linewidth=1.25, linestyle='--')
-            else:
-                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', linewidth=1.25, linestyle='--')
-        plt.fill_between(sh, mean_spectrum+std_spectrum/2, mean_spectrum-std_spectrum/2, label='SD', color='mediumpurple', alpha=0.7, zorder=3)
-        plt.plot(sh, median_spectrum, zorder=4, color='mediumpurple', linewidth=1.25)
-        plt.plot(sh, mean_spectrum, zorder=5, color='cornflowerblue', linewidth=1.25)
-        plt.plot(sh, true_spectrum, zorder=6, color='firebrick')
+            plt.fill_between(sh, original_range['16_quantile'][-np.shape(sh)[0]:], original_range['84_quantile'][-np.shape(sh)[0]:], label='Prior 16% - 84% Quantile', color='grey', alpha=0.2, zorder=2)
+#            for i in range(20):
+#                if i == 0:
+#                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', label='Prior Samples', linewidth=1.25, linestyle='--')
+#                else:
+#                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', linewidth=1.25, linestyle='--')
+#        for i in range(10):
+#            if i == 0:
+#                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', label='Posterior Samples', linewidth=1.25, linestyle='--')
+#            else:
+#                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', linewidth=1.25, linestyle='--')
+        plt.fill_between(sh, powerspectra_bottoms, powerspectra_tops, label='Posterior 16% - 84% Quantile', color='mediumpurple', alpha=0.7, zorder=3)
+        plt.plot(sh, median_spectrum, zorder=4, color='black', linewidth=1.25, label='Median')
+        plt.plot(sh, true_spectrum, zorder=6, color='firebrick', label='Truth')
         #plt.scatter(sh, median_spectrum, label='Median', zorder=4, color='mediumpurple', path_effects=path_effects, s=18)
-        plt.scatter(sh, mean_spectrum, label='Mean', zorder=5, color='cornflowerblue', path_effects=path_effects, s=18)
-        plt.scatter(sh, true_spectrum, label='Truth', zorder=6, color='firebrick', path_effects=path_effects, s=18)
         plt.legend()
         plt.xlim(left=min_degree, right=np.shape(sh)[0]+min_degree-1)
         min_lim = np.min([np.min(min_spectrum), np.min(true_spectrum)])
