@@ -30,4 +30,4 @@ conda activate flow
 ## Contributing
 
 ## Acknowledgements
-The author acknowledges the use of the [_nflows_](https://github.com/uofgravity/nflows#citing-nflows) (C. Durkan et al. (2019)) package to construct implement the normalising flow elements and the [_glasflow_](https://github.com/uofgravity/glasflow) (Williams et al. (2023)) package to construct the neural network. 
+The author acknowledges the use of the [_nflows_](https://github.com/uofgravity/nflows#citing-nflows) (C. Durkan et al. (2019)) package to construct implement the normalising flow elements and the [_glasflow_](https://github.com/uofgravity/glasflow) (Williams et al. (2023)) package to construct the neural network. The Matlab code used for planetary modelling belongs to Bart Root [_GSH_](https://github.com/bartroot/GSH) and was slightly altered to be suitable for usage with Octave.
