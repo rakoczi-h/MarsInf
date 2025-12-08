@@ -4,6 +4,8 @@ Software for creating simulated models of the topography and density distributio
 
 ## Installation
 
+Installation guide for Linux.
+
 ```bash
 git clone https://github.com/rakoczi-h/MarsInf.git
 cd MarsInf 
@@ -30,9 +32,13 @@ conda activate flow
 
 ## Usage
 Can make training and validation data using scripts such as `make_planet_dataset.py`.
+
 Example training script is included in `train.py`.
 
-## Contributing
+Examples of how to create the p-p plot for validation and how to sample and plot the posterior distribution is included in `test.py`.
+
 
 ## Acknowledgements
 The author acknowledges the use of the [_nflows_](https://github.com/uofgravity/nflows#citing-nflows) (C. Durkan et al. (2019)) package to construct implement the normalising flow elements and the [_glasflow_](https://github.com/uofgravity/glasflow) (Williams et al. (2023)) package to construct the neural network. The Matlab code used for planetary modelling belongs to Bart Root [_GSH_](https://github.com/bartroot/GSH) and was slightly altered to be suitable for usage with Octave.
+
+The data that are used in this study is derived from data available on PDS Geosciences Node, [_topography_](https://pds.nasa.gov/ds-view/pds/viewDataset.jsp?dsid=MGS-M-MOLA-5-MEGDR-L3-V1.0) (G. Neumann et al. (2003)) and [_gravity_](https://pds.nasa.gov/ds-view/pds/viewDataset.jsp?dsid=MRO-M-RSS-5) (M. Zuber et al. (2010)).
