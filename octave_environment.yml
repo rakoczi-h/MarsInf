@@ -4,7 +4,7 @@ channels:
   - defaults
 
 dependencies:
-  # Core
+
   - python=3.12
   - pip
   - numpy
@@ -23,20 +23,20 @@ dependencies:
   - sympy
   - networkx
 
-  # Jupyter + tools
+
   - ipykernel
   - jupyter_core
   - jupyter_client
 
-  # Octave + Jupyter kernel
-  - octave=8.*       # pulls required libs automatically
+
+  - octave=8.*   
   - gnuplot
   - graphicsmagick
 
-  # PyTorch (CPU only)
+
   - pytorch=2.3.0
 
-  # Other useful dependencies
+
   - pyyaml
   - typing_extensions
   - click
@@ -53,7 +53,7 @@ dependencies:
       - ipython
       - psutil
       - fsspec
-      - torch==2.2.2      # your pip-installed CPU torch build
+      - torch==2.2.2   
       - tenacity
 
 variables:
