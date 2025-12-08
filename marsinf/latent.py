@@ -54,7 +54,7 @@ class FlowLatent():
             p = scipy.stats.gaussian_kde(dim) # approximate pdf of the latent space
             p_x = p.evaluate(x_grid)
             f = p_x*np.log(p_x/q_x) # kl divergence function
-            kldiv = scipy.integrate.simps(f, x_grid)
+            kldiv = scipy.integrate.simpson(f, x_grid)
             if np.isnan(kldiv).any():
                 continue
             distance.append(kldiv)
