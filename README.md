@@ -1,6 +1,6 @@
 # MarsInf
 
-Software for creating simulated models of the topography and density distributions of the crust and mantle of Mars, and for computing the gravitational field of these toy models. Finally, a parameter inference tool applying Normalising Flows is implemented for the inference of the parameters of the planet.
+Software for creating simulated models of the topography and density distributions of the crust and mantle of Mars, and for computing the gravitational field of these toy models. In addition, a parameter inference tool applying Normalising Flows is implemented for the inference of the parameters of the planet.
 
 ## Installation
 
@@ -22,7 +22,7 @@ conda env config vars set OCTAVE_EXECUTABLE=$CONDA_PREFIX/bin/octave-cli-8.4.0
 conda deactivate
 conda activate octave
 ```
-Note: Requires GNU Octave installation.
+Note: Requires [GNU Octave]() installation.
 
 2. Environment for inference, containing pytorch libraries:
 ```bash
@@ -31,11 +31,26 @@ conda activate flow
 ```
 
 ## Usage
-Can make training and validation data using scripts such as `make_planet_dataset.py`. Note that this is just an example and a much higher number of samples are required for training in reality.
 
-Example training script is included in `train.py`.
+Some example scripts were included to showcase some aspects of the software. Note that thse are just examples and a much higher number of samples are required for sufficient training. See suggested numbers in publication.
 
-Examples of how to create the p-p plot for validation and how to sample and plot the posterior distribution is included in `test.py`.
+
+1. Making training and validation data.
+```bash
+conda activate octave
+python make_planet_dataset.py
+```
+
+2. Example training script.
+```bash
+conda activate flow
+python train.py
+```
+
+3. Examples of how to create the p-p plot for validation and how to sample and plot the posterior distribution.
+```bash
+python test.py
+```
 
 
 ## Acknowledgements
