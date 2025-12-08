@@ -5,7 +5,7 @@ import matplotlib
 import numpy as np
 from itertools import product
 from collections import namedtuple
-import imageio
+
 import os
 import matplotlib.patheffects as pe
 plt.style.use('seaborn-v0_8-deep')
@@ -255,23 +255,4 @@ def plot_js_hist_and_scatter(js_divs, parameters, keys, filename='js_hist_scatte
     plt.savefig(filename)
     plt.close()
 
-def make_gif(image_names, image_location='', filename='gif.gif'):
-    """
-    Makes a gif out of input images.
-    Parameters
-    ----------
-        image_names: list
-            The list of the names of the image files to read.
-        image_location: str
-            The directory where the images are located. (Default: '')
-        filename: str
-            The file under which the resulting gif is saved. (Default: 'gif.gif')
-    """
-    if filename[-4:] != '.gif':
-        raise ValueError('The filetype for filename has to be .gif')
-
-    images = []
-    for image_name in image_names:
-        images.append(imageio.imread(os.path.join(image_location, image_name)))
-    imageio.mimsave(filename, images, fps=1)
 
