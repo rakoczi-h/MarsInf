@@ -18,6 +18,7 @@ conda activate octave
 conda env config vars set OCTAVE=$CONDA_PREFIX/bin/octave-cli-8.4.0
 conda env config vars set OCTAVE_EXECUTABLE=$CONDA_PREFIX/bin/octave-cli-8.4.0
 ```
+Note: Requires GNU Octave installation.
 
 Environment for inference, containing pytorch libraries:
 ```bash
