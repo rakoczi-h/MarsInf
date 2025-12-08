@@ -21,9 +21,9 @@ if not os.path.exists(saveloc):
 distributions = {'e_c': ['Uniform', 0.1, 20.0],
                 'k_c': ['Uniform', 0.1, 1.5],
                 'v_c': ['Uniform', 10.0, 500.0], #kg/m^3
-                'e_m': 10.0,
-                'k_m': 0.6,
-                'v_m': 100.0 #kg/m^3
+                'e_m': ['Uniform', 0.1, 20.0],
+                'k_m': ['Uniform', 0.1, 1.5],
+                'v_m': ['Uniform', 10.0, 500.0] #kg/m^3
                 }
 priors = Prior(distributions=distributions)
 
@@ -50,7 +50,7 @@ model_framework =  {'type': 'sh',
                     'mass': 6.4171*1e23, #kg
                     'radius': 3.396*1e6, #m
                     'seed_topography': 123,
-                    'seed_mantle': 456,
+                    'seed_mantle': None,
                     'seed_crust': None
                     }
 
