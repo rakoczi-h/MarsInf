@@ -11,16 +11,18 @@ cd MarsInf
 
 Two separate conda environments are required for creating planet simulations and for inference due to package conflicts.
 
-Environment for planet simulations, containing octave-python interpreter:
+1. Environment for planet simulations, containing octave-python interpreter:
 ```bash
 conda env create -f octave_environment.yml
 conda activate octave
 conda env config vars set OCTAVE=$CONDA_PREFIX/bin/octave-cli-8.4.0
 conda env config vars set OCTAVE_EXECUTABLE=$CONDA_PREFIX/bin/octave-cli-8.4.0
+conda deactivate
+conda activate octave
 ```
 Note: Requires GNU Octave installation.
 
-Environment for inference, containing pytorch libraries:
+2. Environment for inference, containing pytorch libraries:
 ```bash
 conda env create -f flow_environment.yml
 conda activate flow
