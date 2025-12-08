@@ -90,3 +90,17 @@ with open(file_name, 'wb') as file:
 print(f"Data set of size {size} made and saved as {file_name}.")
 
 
+
+# Make validation data
+size = 10 # number of training samples generated. Need to increase this for real use
+dt_train = PlanetDataSet(priors=priors, size=size, survey_framework=survey_framework, model_framework=model_framework, topography=topography)
+
+dt_train = dt_train.make_dataset(slim_output=True, repeats=5)
+
+file_name = os.path.join(saveloc, f"validationset.pkl")
+start_save = datetime.now()
+with open(file_name, 'wb') as file:
+    pkl.dump(dt_train, file)
+print(f"Data set of size {size} made and saved as {file_name}.")
+
+
