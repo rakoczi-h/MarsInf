@@ -24,16 +24,16 @@ model_parameters_to_include = ['e_c', 'k_c', 'v_c', 'e_m', 'k_m', 'v_m']
 conditional_format = 'degree_variance'
 
 # loading noise
-with open('/scratch/balta0/2263373r/mars/noise_level_sh.pkl', 'rb') as file:
+with open('noise_level_sh.pkl', 'rb') as file:
     noise = pkl.load(file)
 
 # ------------- Defining scalers ---------------------------
-dr = DataReader(file_names="trainset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, conditional_format=conditional_format, noise=noise)
+dr = DataReader(file_names="trainset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, conditional_format=conditional_format, noise=noise, min_degree=7)
 
 train_data, train_conditional = dr.read_files()
 datasize = dr.datasize
 
-scalers = [MinMaxScaler(), MinMaxScaler(), MinMaxScaler()]
+scalers = [MinMaxScaler(), MinMaxScaler(), MinMaxScaler(), MinMaxScaler(), MinMaxScaler(), MinMaxScaler()]
 sc_data = Scaler(scalers=scalers)
 sc_data.scale_data(train_data, fit=True)
 
@@ -44,9 +44,9 @@ sc_conditional.scale_data(train_conditional, fit=True)
 scalers = {'conditional': sc_conditional, 'data': sc_data}
 
 # ------------- Reading the data ----------------------------
-dr_train = DataReader(file_names="trainset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, noise=noise, conditional_format=conditional_format)
+dr_train = DataReader(file_names="trainset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, noise=noise, conditional_format=conditional_format, min_degree=7)
 
-dr_validation = DataReader(file_names="validationset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, noise=noise, conditional_format=conditional_format)
+dr_validation = DataReader(file_names="validationset.pkl", data_location=data_location, model_parameters_to_include=model_parameters_to_include, noise=noise, conditional_format=conditional_format, min_degree=7)
 
 # ------------- Defining the prior ---------------------
 with open(os.path.join(data_location, "priors.pkl"), 'rb') as file:
