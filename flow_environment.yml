@@ -8,13 +8,11 @@ channels:
 dependencies:
   - python=3.12
   - pip
-  # PyTorch + CUDA
   - pytorch=2.3.1
   - torchvision=0.18.1
   - torchaudio=2.3.1
   - pytorch-cuda=12.1
 
-  # Scientific Python stack
   - numpy
   - scipy
   - pandas
@@ -24,19 +22,17 @@ dependencies:
   - h5py
   - shapely
 
-  # Utilities
   - requests
   - tqdm
   - pyyaml
   - typing_extensions
 
-  # Optional but generally useful
   - jinja2
   - networkx
 
-  # pip-required scientific tools
   - pip:
       - bilby==2.3.0
+      - oct2py==4.0.6
       - bilby-cython==0.5.2
       - dynesty==2.1.4
       - emcee==3.1.6
