@@ -29,6 +29,8 @@ conda activate flow
 ```
 
 ## Usage
+Can make training and validation data using scripts such as `make_planet_dataset.py`.
+Example training script is included in `train.py`.
 
 ## Contributing
 
