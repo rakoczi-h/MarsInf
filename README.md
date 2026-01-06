@@ -4,7 +4,7 @@ Software for creating simulated models of the topography and density distributio
 
 ## Installation
 
-Installation guide for Linux.
+Installation guide for Ubuntu Linux.
 
 ```bash
 git clone https://github.com/rakoczi-h/MarsInf.git
