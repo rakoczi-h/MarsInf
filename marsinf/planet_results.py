@@ -36,7 +36,7 @@ class PlanetFlowResults(FlowResults):
             samples = np.delete(samples, idx, axis=0)
         return samples
 
-    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False, conditional_format=None, min_degree=2, topography=None):
+    def power_spectra_statistics(self, min_degree=2, enforce_prior_bounds=False, topography=None):
         if enforce_prior_bounds:
             samples = self.enforce_priors()
         else:
@@ -59,13 +59,6 @@ class PlanetFlowResults(FlowResults):
             sh = np.delete(sh.flatten(), idx_min, 0)
             powerspectra.append(ps)
 
-        if conditional_format == 'degree_variance':
-            true_spectrum = self.conditional[0]
-        else:
-            true_spectrum, sh = degree_variance(np.c_[sh_degrees[3:,:], np.expand_dims(self.conditional[0], axis=1), np.expand_dims(self.conditional[1], axis=1)])
-        idx_min = np.array(np.argwhere(sh<min_degree))
-        true_spectrum = np.delete(true_spectrum, idx_min, 0)
-        sh = np.delete(sh, idx_min, 0)
 
         powerspectra = np.vstack(powerspectra)
         top_percentile = int(0.84*np.shape(powerspectra)[0])
@@ -79,29 +72,42 @@ class PlanetFlowResults(FlowResults):
         powerspectra_tops = np.array(tops)
         powerspectra_bottoms = np.array(bottoms)
         median_spectrum = np.median(powerspectra, axis=0)
+        mean_spectrum = np.mean(powerspectra, axis=0)
+        sd_spectrum = np.std(powerspectra, axis=0)
         min_spectrum = np.min(powerspectra, axis=0)
         max_spectrum = np.max(powerspectra, axis=0)
+        out = {'84percentile': powerspectra_tops, '16percentile': powerspectra_bottoms, 'median': median_spectrum, 
+               'min': min_spectrum, 'max': max_spectrum, 'sd': sd_spectrum, 'mean': mean_spectrum, 'sh_degrees': sh_degrees}
+        return out
+
+	
+
+    def power_spectra_comparison(self, original_range=None, filename='power_spectrum_comparison', enforce_prior_bounds=False, conditional_format=None, min_degree=2, topography=None):
+
+        ps_stats = self.power_spectra_statistics(min_degree=min_degree, enforceprior_bounds=enforce_prior_bounds, topography=topography)
+	sh_degrees = ps_stats['sh_degrees']
+        powerspectra_tops = ps_stats['84percentile']
+        powerspectra_bottoms = ps_stats['16percentile']
+        median_spectrum = ps_stats['median']
+        min_spectrum = ps_stats['min']
+        max_spectrum = ps_stats['max']
+
+
+        if conditional_format == 'degree_variance':
+            true_spectrum = self.conditional[0]
+        else:
+            true_spectrum, sh = degree_variance(np.c_[sh_degrees[3:,:], np.expand_dims(self.conditional[0], axis=1), np.expand_dims(self.conditional[1], axis=1)])
+        idx_min = np.array(np.argwhere(sh<min_degree))
+        true_spectrum = np.delete(true_spectrum, idx_min, 0)
+        sh = np.delete(sh, idx_min, 0)
+
 
         plt.grid(zorder=-1, linestyle='--', axis='x')
-        #if original_range is not None:
-            #plt.fill_between(sh, original_min, original_max, label='Data Set Range', color='gray', alpha=0.3, zorder=1)
-        #plt.fill_between(sh, min_spectrum, max_spectrum, label='Sample Range', color='sandybrown', alpha=0.7, zorder=2)
         if original_range is not None:
             plt.fill_between(sh, original_range['16_quantile'][-np.shape(sh)[0]:], original_range['84_quantile'][-np.shape(sh)[0]:], label='Prior 16% - 84% Quantile', color='grey', alpha=0.2, zorder=2)
-#            for i in range(20):
-#                if i == 0:
-#                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', label='Prior Samples', linewidth=1.25, linestyle='--')
-#                else:
-#                    plt.plot(sh, original_range['examples'][i,-np.shape(sh)[0]:], zorder=2, alpha=0.2, color='grey', linewidth=1.25, linestyle='--')
-#        for i in range(10):
-#            if i == 0:
-#                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', label='Posterior Samples', linewidth=1.25, linestyle='--')
-#            else:
-#                plt.plot(sh, powerspectra[i,:], zorder=2, alpha=0.7, color='sandybrown', linewidth=1.25, linestyle='--')
         plt.fill_between(sh, powerspectra_bottoms, powerspectra_tops, label='Posterior 16% - 84% Quantile', color='mediumpurple', alpha=0.7, zorder=3)
         plt.plot(sh, median_spectrum, zorder=4, color='black', linewidth=1.25, label='Median')
         plt.plot(sh, true_spectrum, zorder=6, color='firebrick', label='Truth')
-        #plt.scatter(sh, median_spectrum, label='Median', zorder=4, color='mediumpurple', path_effects=path_effects, s=18)
         plt.legend()
         plt.xlim(left=min_degree, right=np.shape(sh)[0]+min_degree-1)
         min_lim = np.min([np.min(min_spectrum), np.min(true_spectrum)])
