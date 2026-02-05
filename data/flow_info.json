@@ -1,0 +1,14 @@
+{
+    "n_inputs": 6,
+    "n_conditional_inputs": 38,
+    "n_transforms": 23,
+    "n_blocks_per_transform": 8,
+    "n_neurons": 20,
+    "batch_norm": true,
+    "batch_size": 10000,
+    "early_stopping": true,
+    "dropout_probability": 0.0,
+    "lr": 0.001,
+    "epochs": 50000,
+    "datasize": 1000000
+}

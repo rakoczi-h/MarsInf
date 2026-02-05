@@ -1,0 +1,1 @@
+{"type": "sh", "av_dens_c": 3050.0, "av_dens_m": 3550.0, "flex_model": "Thin_Shell", "moho_parameters": {"Te": 80000.0, "D_c": 60000.0, "E": 100000000000.0, "v": 0.25, "GM": 42830000000000.0, "Re": 3396000.0}, "mass": 6.417099999999999e+23, "radius": 3396000.0, "seed_topography": 123, "seed_mantle": null, "seed_crust": null}
